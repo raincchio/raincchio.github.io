@@ -4,6 +4,8 @@
  my first blog 
 [Legendre transform](https://github.com/raincchio/raincchio.github.io/edit/main/index.md)
 
+[Legendre transform](https://github.com/raincchio/raincchio.github.io/blob/main/Legendre%20transform.md)
+
 
 ### Markdown
 
