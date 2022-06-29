@@ -1,22 +1,12 @@
-<head>
-    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
-    <script type="text/x-mathjax-config">
-        MathJax.Hub.Config({
-            tex2jax: {
-            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-            inlineMath: [['$','$']]
-            }
-        });
-    </script>
-</head>
 
-## Welcome to GitHub Pages
+
+## Welcome to My Home Page
 
 ## Blog
- my first blog 
-[Legendre transform](https://github.com/raincchio/raincchio.github.io/edit/main/index.md)
 
 [Legendre transform](https://raincchio.github.io/legendre_transform)
+
+[thought about setp size](https://raincchio.github.io/step_size)
 
 ### Markdown
 
