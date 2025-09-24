@@ -1,7 +1,7 @@
 
 # 🌌 Hi, I'm Xing Chen 👋
-* 💻 **ML Researcher** | 📈 **Quantitative Trading Enthusiast**
-* 🎓 **PhD** | 🔬 **Deep Reinforcement Learning**
+* 📈 **ML Researcher**, focus on  **Quantitative Trading Enthusiast**
+* 🎓 **PhD** in **Deep Reinforcement Learning**
 
 ## 🌟 My Goal
 * ✨ *“Make things simple and effective, not only in reinforcement learning.”*
