@@ -1,35 +1,30 @@
 
+---
 
-## Welcome to My Home Page
+# 🌌 Hi, I'm Xing Chen 👋
 
-## Blog
+💻 **ML Researcher** | 📈 **Quantitative Trading Enthusiast**
 
-[Legendre transform](https://raincchio.github.io/legendre_transform)
+🎓 **PhD** | 🔬 **Deep Reinforcement Learning**
 
-[thought about setp size](https://raincchio.github.io/step_size)
+---
 
-### Markdown
+## 🌟 My Goal
+✨ *“Make things simple and effective, not only in reinforcement learning.”*
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+---
 
-```markdown
-Syntax highlighted code block
+## 🚀 About Me
 
-# Header 1
-## Header 2
-### Header 3
+* 🔭 Currently researching **reinforcement learning from human feedback** & **continual learning**
+* 🎮 Always struggling to apply RL to practical problems.
+* 💡 Experienced in **multi-agent Deep RL**, and **Deep Reinforcement Learning algorithm**.
+---
 
-- Bulleted
-- List
+## 🌐 Connect With Me
 
-1. Numbered
-2. List
+* 📄 [Google Scholar](https://scholar.google.com/citations?user=G2q7d5QAAAAJ&hl=en)
+* ✍️ Email: [raincchio@gmail.com](mailto:raincchio@gmail.com)
 
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
+---
 
