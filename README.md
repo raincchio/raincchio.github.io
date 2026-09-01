@@ -1,19 +1,35 @@
-# 🌌 Hi, I'm Xing Chen 👋
-* 💻 **ML Researcher** | 📈 **Quantitative Trading Enthusiast**
-* 🎓 **PhD** | 🔬 **Deep Reinforcement Learning**
+# raincchio.github.io
 
-## 🌟 My Goal
-* ✨ *“Make things simple and effective, not only in reinforcement learning.”*
+Personal homepage of Xing Chen — https://raincchio.github.io/
 
-## 🚀 About Me
+Static HTML/CSS served by GitHub Pages (`.nojekyll` disables Jekyll).
+Content lives in `data/*.json`; the HTML pages are generated from it and
+committed, so Pages needs no build step.
 
-* 🔭 Currently researching **reinforcement learning from human feedback** & **continue learning**
-* 🎮 Always struggling to apply RL to practical problems.
-* 💡 Experienced in **multi-agent Deep RL algos**, and expertise in **Deep RL algos**.
+## Editing (local admin)
 
+```bash
+python3 admin.py          # then open http://localhost:8000/admin
+```
 
-## 🌐 Contact With Me
+Tabs for each module (动态 / 论文 / 工作经历 / 学习经历 / 博客 / 站点信息);
+add, edit, reorder, delete entries and hit 保存并重建 — the JSON is written
+and all pages regenerate. Preview at http://localhost:8000/. When done,
+commit and push (`git add -A && git commit && git push`).
 
-* 📄 [Google Scholar](https://scholar.google.com/citations?user=G2q7d5QAAAAJ&hl=en)
-* ✍️ Email: [raincchio@gmail.com](mailto:raincchio@gmail.com)
-* Github [https://github.com/raincchio](https://github.com/raincchio)
+Prefer hand-editing? Change `data/*.json` directly and run `python3 build.py`.
+
+## Structure
+
+- `data/` — all content, one JSON per module (single source of truth)
+- `build.py` — regenerates the pages below from `data/` (stdlib only)
+- `admin.py` — local editing UI + preview server (stdlib only, binds 127.0.0.1)
+- `index.html` — home: motto + latest 3 updates (auto-picked by date) + links
+- `blog/` — post list plus one page per post from `data/posts.json`
+- `publications/` — full publication list, grouped by year
+- `experience/`, `education/` — timelines
+- `style.css` — shared stylesheet (light/dark via `prefers-color-scheme`), hand-maintained
+- `drafts/` — unpublished notes, not linked from the site
+
+Don't edit the generated `index.html` files by hand — the next build
+overwrites them. Layout changes go in `build.py`, styling in `style.css`.

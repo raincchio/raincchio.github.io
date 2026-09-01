@@ -1,0 +1,98 @@
+[
+  {
+    "year": "2026.08",
+    "title": "SRJudge: Empowering Large Language Models with Selective Reasoning for Fine-Grained Knowledge",
+    "authors": "Z. Yang, J. Yang, H. Lin, X. Chen, Q. Guan",
+    "venue": "IJCAI, 2026"
+  },
+  {
+    "year": "2026.03",
+    "title": "A Tighter Bound for Reward Learning in Reinforcement Learning from Human Feedback",
+    "authors": "G. Chen, X. Chen, B. An, Y. Zhang",
+    "venue": "Transactions on Machine Learning Research, 2026"
+  },
+  {
+    "year": "2026.03",
+    "title": "Thin Keys, Full Values: Reducing KV Cache via Low-Dimensional Attention Selection",
+    "authors": "H. Yao, X. Chen, A. Murtadha, G. Wang",
+    "venue": "arXiv:2603.04427, 2026"
+  },
+  {
+    "year": "2026.04",
+    "title": "Why Attend to Everything? Focus is the Key",
+    "authors": "H. Yao, X. Chen, A. Murtadha, J. Li, Y. A. Yadkori, S. Shao, C. Liu, G. Wang, et al.",
+    "venue": "arXiv:2604.03260, 2026"
+  },
+  {
+    "year": "2026.03",
+    "title": "An Evolutionary Algorithm with Probabilistic Annealing for Large-scale Sparse Multi-objective Optimization",
+    "authors": "S. Shao, Y. Sun, X. Chen, Y. Tian, G. Wang, J. Li",
+    "venue": "arXiv:2603.11874, 2026"
+  },
+  {
+    "year": "2026.01",
+    "title": "Signal-Adaptive Trust Regions for Gradient-Free Optimization of Recurrent Spiking Neural Networks",
+    "authors": "J. Li, Y. Sun, Z. Ma, H. He, X. Zhang, X. Chen, J. Li, S. Song",
+    "venue": "arXiv:2601.21572, 2026"
+  },
+  {
+    "year": "2025.11",
+    "title": "Universal Stabilization for Maximum Entropy Optimization in Reinforcement Learning",
+    "authors": "X. Chen, Y. Li, X. Cao, H. Chen, H. Yao, B. An, Y. Chang",
+    "venue": "IEEE Transactions on Neural Networks and Learning Systems, 2025"
+  },
+  {
+    "year": "2025.08",
+    "title": "Compact Exploration for Continuous Action Reinforcement Learning",
+    "authors": "X. Chen, H. Chen, Y. Chang",
+    "venue": "Pattern Recognition, 2025"
+  },
+  {
+    "year": "2025.05",
+    "title": "HiPPO: Enhancing Proximal Policy Optimization with Highlight Replay",
+    "authors": "S. Zhang, X. Chen, Z. Liu, H. Chen, Y. Chang",
+    "venue": "Pattern Recognition, 2025"
+  },
+  {
+    "year": "2025.11",
+    "title": "State Transition Difference Prediction for Deep Reinforcement Learning",
+    "authors": "H. Chi, Z. Liu, X. Chen, B. Qu, J. Hu, Y. Jiang, H. Chen, Y. Chang",
+    "venue": "Pattern Recognition, 2025"
+  },
+  {
+    "year": "2025.06",
+    "title": "Hierarchical Reasoning Model",
+    "authors": "G. Wang, J. Li, Y. Sun, X. Chen, C. Liu, Y. Wu, M. Lu, S. Song, Y. A. Yadkori",
+    "venue": "arXiv:2506.21734, 2025"
+  },
+  {
+    "year": "2025.01",
+    "title": "Value Shaping: Bias Reduction in Bellman Error for Deep Reinforcement Learning",
+    "authors": "X. Chen, X. Cao, H. Chen, B. An, Y. Chang",
+    "venue": ""
+  },
+  {
+    "year": "2023.08",
+    "title": "The Sufficiency of Off-Policyness and Soft Clipping: PPO Is Still Insufficient According to an Off-Policy Measure",
+    "authors": "X. Chen, D. Diao, H. Chen, H. Yao, H. Piao, Z. Sun, Z. Yang, R. Goebel, et al.",
+    "venue": "AAAI Conference on Artificial Intelligence, 2023"
+  },
+  {
+    "year": "2023.05",
+    "title": "Careful at Estimation and Bold at Exploration",
+    "authors": "X. Chen, Y. Liu, Z. Liu, H. Chen, H. Yao, Y. Chang",
+    "venue": "arXiv:2308.11348, 2023"
+  },
+  {
+    "year": "2023.04",
+    "title": "Enhancing Ontology Translation Through Cross-Lingual Agreement",
+    "authors": "M. Tian, F. Giunchiglia, R. Song, X. Chen, H. Xu",
+    "venue": "ICASSP, 2023"
+  },
+  {
+    "year": "2021.06",
+    "title": "Multi-Agent Hierarchical Policy Gradient for Air Combat Tactics Emergence via Self-Play",
+    "authors": "Z. Sun, H. Piao, Z. Yang, Y. Zhao, G. Zhan, D. Zhou, G. Meng, H. Chen, et al.",
+    "venue": "Engineering Applications of Artificial Intelligence, 2021"
+  }
+]

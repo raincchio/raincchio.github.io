@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2019.9 – 2025.6",
+    "title": "PhD, Artificial Intelligence",
+    "org": "Jilin University",
+    "desc": "Research on off-policy analysis of policy optimization, exploration for continuous control, and RLHF. Advisor: Professor <a href=\"https://yichang-cs.com/\">Yi Chang</a>."
+  },
+  {
+    "date": "2023.11 – 2025.3",
+    "title": "Visiting Scholar, CCDS",
+    "org": "Nanyang Technological University",
+    "desc": "Research on reinforcement learning from human feedback. Advisor: Professor <a href=\"https://personal.ntu.edu.sg/boan/\">Bo An</a>."
+  },
+  {
+    "date": "2016.9 – 2019.6",
+    "title": "Master, Software Engineering",
+    "org": "Jilin University",
+    "desc": "Research on deep learning and image segmentation."
+  },
+  {
+    "date": "2011.9 – 2015.6",
+    "title": "Bachelor, Software Engineering",
+    "org": "Jilin University",
+    "desc": ""
+  }
+]

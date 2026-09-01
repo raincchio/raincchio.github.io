@@ -1,0 +1,22 @@
+{
+  "name": "Xing Chen",
+  "tagline": "ML Researcher · Deep Reinforcement Learning · Quantitative Trading  · LLM",
+  "motto": "Make things simple and effective, not only in reinforcement learning.",
+  "highlight": "X. Chen",
+  "source_url": "https://github.com/raincchio/raincchio.github.io",
+  "blog_intro": "Notes on reinforcement learning, optimization, and quantitative trading.",
+  "links": [
+    {
+      "label": "Google Scholar",
+      "url": "https://scholar.google.com/citations?user=G2q7d5QAAAAJ&hl=en"
+    },
+    {
+      "label": "GitHub",
+      "url": "https://github.com/raincchio"
+    },
+    {
+      "label": "raincchio@gmail.com",
+      "url": "mailto:raincchio@gmail.com"
+    }
+  ]
+}
