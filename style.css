@@ -1,25 +1,29 @@
 /* ---------- tokens ---------- */
 :root {
   color-scheme: light dark;
-  --bg: #fcfcfd;
+  --bg: #f2f4f8;
   --surface: #ffffff;
   --text: #1a1d21;
   --text-muted: #5c6470;
   --accent: #2563eb;
   --accent-soft: #dbe7ff;
-  --border: #e5e8ec;
+  --border: #e4e8ee;
+  --glow: rgba(37, 99, 235, 0.12);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 10px rgba(16, 24, 40, 0.06);
   --max-width: 44rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #101317;
-    --surface: #171b21;
+    --bg: #0f1216;
+    --surface: #1a2028;
     --text: #e6e9ed;
     --text-muted: #9aa3af;
     --accent: #6ea0ff;
     --accent-soft: #1e2c4a;
-    --border: #262c34;
+    --border: #272e37;
+    --glow: rgba(110, 160, 255, 0.10);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.28);
   }
 }
 
@@ -28,7 +32,9 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(60rem 28rem at 65% -8rem, var(--glow), transparent 70%) no-repeat,
+    var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
@@ -51,8 +57,7 @@ h1, h2, .brand {
 
 /* ---------- header ---------- */
 .site-header {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: transparent;
 }
 
 .site-header nav {
@@ -99,10 +104,6 @@ h2 {
   gap: 2.5rem;
   align-items: flex-start;
   justify-content: space-between;
-  background: linear-gradient(135deg, var(--accent-soft), transparent 65%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 2rem;
 }
 
 .home-hero .hero-text { min-width: 0; }
@@ -121,8 +122,8 @@ h2 {
   height: 128px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--accent);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
+  border: 3px solid var(--surface);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.18);
   margin-top: 0.5rem;
 }
 
@@ -167,6 +168,7 @@ h2 {
   background: var(--surface);
   color: var(--text);
   font-size: 0.92rem;
+  box-shadow: var(--shadow);
 }
 .links a:hover {
   border-color: var(--accent);
@@ -185,16 +187,17 @@ h2 {
   display: block;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 1rem 1.1rem;
   color: var(--text);
+  box-shadow: var(--shadow);
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .feature-card:hover {
   text-decoration: none;
   border-color: var(--accent);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.14);
   transform: translateY(-2px);
 }
 
@@ -253,15 +256,22 @@ h2 {
 /* ---------- news ---------- */
 .news-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0.35rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 }
 
 .news-list li {
   display: flex;
   gap: 0.75rem;
-  padding: 0.4rem 0;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
 }
+
+.news-list li:last-child { border-bottom: none; }
 
 .news-list .date {
   flex: 0 0 3.2rem;
@@ -278,12 +288,16 @@ h2 {
 
 .pub-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0.35rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 }
 
 .pub-list li {
-  padding: 0.75rem 0;
+  padding: 0.8rem 0;
   border-bottom: 1px solid var(--border);
 }
 .pub-list li:last-child { border-bottom: none; }
