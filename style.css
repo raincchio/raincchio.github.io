@@ -10,6 +10,7 @@
   --border: #e4e8ee;
   --glow: rgba(37, 99, 235, 0.12);
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 10px rgba(16, 24, 40, 0.06);
+  --surface-soft: rgba(255, 255, 255, 0.55);
   --max-width: 44rem;
 }
 
@@ -24,6 +25,7 @@
     --border: #272e37;
     --glow: rgba(110, 160, 255, 0.10);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.28);
+    --surface-soft: rgba(26, 32, 40, 0.5);
   }
 }
 
@@ -168,7 +170,6 @@ h2 {
   background: var(--surface);
   color: var(--text);
   font-size: 0.92rem;
-  box-shadow: var(--shadow);
 }
 .links a:hover {
   border-color: var(--accent);
@@ -185,17 +186,17 @@ h2 {
 
 .feature-card {
   display: block;
-  background: var(--surface);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1rem 1.1rem;
   color: var(--text);
-  box-shadow: var(--shadow);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
 }
 
 .feature-card:hover {
   text-decoration: none;
+  background: var(--surface);
   border-color: var(--accent);
   box-shadow: 0 8px 22px rgba(37, 99, 235, 0.14);
   transform: translateY(-2px);
@@ -258,10 +259,9 @@ h2 {
   list-style: none;
   margin: 0;
   padding: 0.35rem 1.2rem;
-  background: var(--surface);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: var(--shadow);
 }
 
 .news-list li {
@@ -290,10 +290,9 @@ h2 {
   list-style: none;
   margin: 0;
   padding: 0.35rem 1.2rem;
-  background: var(--surface);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: var(--shadow);
 }
 
 .pub-list li {
