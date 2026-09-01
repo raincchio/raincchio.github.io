@@ -157,13 +157,16 @@ const SCHEMAS = {
       {k:'date', label:'日期', short:true},
       {k:'text', label:'内容（纯文本或 HTML，可写 <a href="/publications/">链接</a>）', type:'textarea', rows:2}],
     blank:{date:'', text:''} },
-  publications: { title:'论文', hint:'按年份自动分组、倒序排列；作者里出现「X. Chen」会自动加粗。',
+  publications: { title:'论文', hint:'按年份自动分组、倒序排列；作者里出现「X. Chen」会自动加粗。勾选「代表作」的论文（最多取最新 3 篇）会以卡片展示在主页 Research Highlights。',
     fields:[
-      {k:'year', label:'年份', short:true},
+      {k:'year', label:'年份（如 2026.03）', short:true},
       {k:'title', label:'标题'},
       {k:'authors', label:'作者（缩写、逗号分隔）'},
-      {k:'venue', label:'发表于（会议/期刊 + 年份，或 arXiv 编号）'}],
-    blank:{year:'', title:'', authors:'', venue:''} },
+      {k:'venue', label:'发表于（会议/期刊 + 年份，或 arXiv 编号）'},
+      {k:'featured', label:'代表作（显示在主页）', type:'checkbox'},
+      {k:'short', label:'venue 简称（代表作卡片标签，如 AAAI 2023）', short:true},
+      {k:'note', label:'一句话简介（代表作卡片显示）'}],
+    blank:{year:'', title:'', authors:'', venue:'', featured:false, short:'', note:''} },
   experience: { title:'工作经历', hint:'按列表顺序展示，请把最新的放最上面。描述可含 HTML 链接。',
     fields:[
       {k:'date', label:'时间段（如 2024.8 – Present）', short:true},
@@ -203,6 +206,14 @@ function el(tag, attrs, ...children) {
 
 function field(obj, f) {
   const wrap = el('div');
+  if (f.type === 'checkbox') {
+    const lab = el('label', {style:'display:flex;align-items:center;gap:0.4rem;cursor:pointer;margin-top:0.6rem'});
+    const box = el('input', {type:'checkbox', style:'width:auto', oninput: e => obj[f.k] = e.target.checked});
+    box.checked = !!obj[f.k];
+    lab.append(box, f.label);
+    wrap.append(lab);
+    return wrap;
+  }
   wrap.append(el('label', {}, f.label));
   let input;
   if (f.type === 'textarea') {
@@ -284,6 +295,7 @@ function renderSite() {
     {k:'name', label:'姓名'},
     {k:'tagline', label:'一句话签名（首页标题下方）'},
     {k:'motto', label:'格言（首页引用）', type:'textarea', rows:2},
+    {k:'bio', label:'个人简介（首页 About，可含 HTML 链接）', type:'textarea', rows:4},
     {k:'highlight', label:'论文作者中要加粗的名字'},
     {k:'blog_intro', label:'博客页简介'},
     {k:'source_url', label:'页脚 Source 链接'},

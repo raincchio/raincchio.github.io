@@ -2,6 +2,7 @@
   "name": "Xing Chen",
   "tagline": "ML Researcher · Deep Reinforcement Learning · Quantitative Trading  · LLM",
   "motto": "Make things simple and effective, not only in reinforcement learning.",
+  "bio": "I received my PhD in Artificial Intelligence from Jilin University, where I worked on deep reinforcement learning — off-policy analysis of policy optimization, exploration for continuous control, and RLHF — including a visit to NTU's CCDS working with Prof. Bo An. I now lead an ML team at Ragentile Intelligence, focusing on LLM post-training and infrastructure speedup, with a continuing interest in RL for quantitative trading.",
   "highlight": "X. Chen",
   "source_url": "https://github.com/raincchio/raincchio.github.io",
   "blog_intro": "Notes on reinforcement learning, optimization, and quantitative trading.",

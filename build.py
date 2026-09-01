@@ -50,29 +50,41 @@ def fmt_date(s):
 
 def collect_updates(updates, pubs, posts, experience):
     """Merge manual updates with entries auto-derived from the other modules."""
-    items = [{"key": date_key(u["date"]), "date": fmt_date(u["date"]) or u["date"], "text": u["text"]}
+    items = [{"key": date_key(u["date"]), "date": fmt_date(u["date"]) or u["date"],
+              "kind": "news", "text": u["text"]}
              for u in updates]
     for p in pubs:
         venue = f" ({esc(p['venue'])})" if p.get("venue") else ""
         items.append({
             "key": date_key(p.get("year", "")),
             "date": fmt_date(p.get("year", "")),
-            "text": f'Paper: <a href="/publications/">“{esc(p["title"])}”</a>{venue}.',
+            "kind": "paper",
+            "text": f'<a href="/publications/">“{esc(p["title"])}”</a>{venue}.',
         })
     for p in posts:
         items.append({
             "key": date_key(p.get("date", "")),
             "date": fmt_date(p.get("date", "")),
-            "text": f'Blog post: <a href="/blog/{esc(p["slug"])}.html">{esc(p["title"])}</a>.',
+            "kind": "blog",
+            "text": f'<a href="/blog/{esc(p["slug"])}.html">{esc(p["title"])}</a>.',
         })
     for e in experience:
         items.append({
             "key": date_key(e.get("date", "")),
             "date": fmt_date(e.get("date", "")),
+            "kind": "career",
             "text": f'Joined <a href="/experience/">{esc(e["org"])}</a> as {esc(e["title"])}.',
         })
     items.sort(key=lambda i: i["key"], reverse=True)
     return items[:HOME_UPDATE_COUNT]
+
+
+UPDATE_TAGS = {
+    "paper": "Paper",
+    "career": "Career",
+    "blog": "Blog",
+    "news": "News",
+}
 
 
 def page(site, title, active, body):
@@ -87,6 +99,9 @@ def page(site, title, active, body):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{full_title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -111,28 +126,55 @@ def page(site, title, active, body):
 """
 
 
-def render_home(site, latest):
+def render_home(site, latest, pubs):
     links = "\n        ".join(
         f'<li><a href="{esc(l["url"])}">{esc(l["label"])}</a></li>' for l in site["links"]
     )
     items = "\n        ".join(
         f'<li>\n          <span class="date">{esc(u["date"])}</span>\n'
+        f'          <span class="tag tag-{u["kind"]}">{UPDATE_TAGS[u["kind"]]}</span>\n'
         f'          <span>{u["text"]}</span>\n        </li>'
         for u in latest
     )
     avatar = ""
     if site.get("avatar"):
         avatar = f'\n      <img class="avatar" src="{esc(site["avatar"])}" alt="Portrait of {esc(site["name"])}">'
+    bio = f'\n        <p class="bio">{site["bio"]}</p>' if site.get("bio") else ""
+
+    featured = sorted(
+        (p for p in pubs if p.get("featured")),
+        key=lambda p: date_key(p.get("year", "")),
+        reverse=True,
+    )[:3]
+    highlights = ""
+    if featured:
+        cards = "\n".join(
+            f"""        <a class="feature-card" href="/publications/">
+          <p class="feature-venue">{esc(p.get("short") or p["venue"])}</p>
+          <p class="feature-title">{esc(p["title"])}</p>
+          <p class="feature-note">{esc(p.get("note", ""))}</p>
+        </a>"""
+            for p in featured
+        )
+        highlights = f"""
+
+    <section id="highlights">
+      <h2>Research Highlights</h2>
+      <div class="feature-grid">
+{cards}
+      </div>
+    </section>"""
+
     body = f"""    <section class="hero home-hero">
       <div class="hero-text">
         <h1>{esc(site["name"])}</h1>
         <p class="tagline">{esc(site["tagline"])}</p>
-        <p class="bio goal">“{esc(site["motto"])}”</p>
+        <p class="goal">“{esc(site["motto"])}”</p>{bio}
         <ul class="links">
           {links}
         </ul>
       </div>{avatar}
-    </section>
+    </section>{highlights}
 
     <section id="updates">
       <h2>Latest Updates</h2>
@@ -235,7 +277,7 @@ def main():
     latest = collect_updates(load("updates"), pubs, posts, experience)
 
     out = {
-        ROOT / "index.html": render_home(site, latest),
+        ROOT / "index.html": render_home(site, latest, pubs),
         ROOT / "publications" / "index.html": render_publications(site, pubs),
         ROOT / "experience" / "index.html": render_timeline(site, "Experience", experience),
         ROOT / "education" / "index.html": render_timeline(site, "Education", load("education")),
