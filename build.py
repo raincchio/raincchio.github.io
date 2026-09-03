@@ -4,17 +4,21 @@
 Usage: python3 build.py
 Only the Python standard library is required.
 
-Generated files: index.html, blog/ (index + one page per post),
-publications/index.html, experience/index.html, education/index.html.
-Blog pages other than those listed in data/posts.json are removed on build.
+Generated files: index.html, blog/ (index + one directory per post, with the
+post's images copied in), publications/index.html, experience/index.html,
+education/index.html. Blog posts live as Markdown in posts/<slug>/index.md
+(plus images); data/posts.json is the index (slug/title/date). Blog output
+not backed by the index is removed on build.
 """
 import html
 import json
 import re
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
+POSTS = ROOT / "posts"
 
 NAV = [
     ("Blog", "/blog/"),
@@ -48,6 +52,181 @@ def fmt_date(s):
     return f"{y}.{m:02d}" if m else (str(y) if y else "")
 
 
+# ---------- markdown (subset: headings, paragraphs, emphasis, links, images,
+# code, lists, blockquotes, tables, hr) ----------
+
+def parse_front_matter(text):
+    """Extract a leading '--- key: value ---' block; returns (meta, body)."""
+    meta = {}
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            for ln in text[3:end].splitlines():
+                if ":" in ln:
+                    k, v = ln.split(":", 1)
+                    meta[k.strip().lower()] = v.strip().strip("'\"")
+            text = text[end + 4:].lstrip("\n")
+    return meta, text
+
+
+def _inline_fmt(text):
+    t = esc(text)
+    t = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", r'<img src="\2" alt="\1">', t)
+    t = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", r'<a href="\2">\1</a>', t)
+    t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
+    t = re.sub(r"(?<![\w*])\*([^*]+)\*(?![\w*])", r"<em>\1</em>", t)
+    t = re.sub(r"~~([^~]+)~~", r"<del>\1</del>", t)
+    return t
+
+
+def md_inline(text):
+    out, pos = [], 0
+    for m in re.finditer(r"(`+)(.+?)\1", text):  # code spans first, kept verbatim
+        out.append(_inline_fmt(text[pos:m.start()]))
+        out.append(f"<code>{esc(m.group(2).strip())}</code>")
+        pos = m.end()
+    out.append(_inline_fmt(text[pos:]))
+    return "".join(out)
+
+
+def _is_table(lines, i):
+    return ("|" in lines[i] and i + 1 < len(lines)
+            and re.fullmatch(r"\s*\|?(\s*:?-+:?\s*\|)*\s*:?-+:?\s*\|?\s*", lines[i + 1]) is not None)
+
+
+def _is_block_start(lines, i):
+    l = lines[i]
+    return bool(re.match(r"^(#{1,6}\s|```|>|\s*([-*+]|\d+[.)])\s)", l)
+                or re.match(r"^(\*{3,}|-{3,}|_{3,})\s*$", l)
+                or _is_table(lines, i))
+
+
+def _md_list(lines, i):
+    items = []  # [indent, ordered, content_lines]
+    while i < len(lines):
+        m = re.match(r"^(\s*)([-*+]|\d+[.)])\s+(.*)", lines[i])
+        if m:
+            items.append([len(m.group(1)), m.group(2)[0].isdigit(), [m.group(3)]])
+            i += 1
+        elif (items and lines[i].strip()
+              and len(lines[i]) - len(lines[i].lstrip()) > items[-1][0]):
+            items[-1][2].append(lines[i].strip())  # continuation line
+            i += 1
+        else:
+            break
+
+    def build_list(chunk):
+        out, k = [], 0
+        while k < len(chunk):  # adjacent items of different marker type split lists
+            ordered = chunk[k][1]
+            tag = "ol" if ordered else "ul"
+            out.append(f"<{tag}>")
+            while k < len(chunk) and chunk[k][1] == ordered:
+                indent = chunk[k][0]
+                k2 = k + 1
+                while k2 < len(chunk) and chunk[k2][0] > indent:
+                    k2 += 1
+                inner = md_inline(" ".join(chunk[k][2]))
+                if k2 > k + 1:
+                    inner += build_list(chunk[k + 1:k2])
+                out.append(f"<li>{inner}</li>")
+                k = k2
+            out.append(f"</{tag}>")
+        return "".join(out)
+
+    return i, build_list(items)
+
+
+def _md_table(lines, i):
+    def cells(row):
+        return [c.strip() for c in row.strip().strip("|").split("|")]
+
+    head = cells(lines[i])
+    i += 2
+    rows = []
+    while i < len(lines) and "|" in lines[i] and lines[i].strip():
+        rows.append(cells(lines[i]))
+        i += 1
+    thead = "".join(f"<th>{md_inline(c)}</th>" for c in head)
+    body = "".join(
+        "<tr>" + "".join(f"<td>{md_inline(c)}</td>" for c in r) + "</tr>" for r in rows
+    )
+    return i, (f'<div class="table-wrap"><table><thead><tr>{thead}</tr></thead>'
+               f"<tbody>{body}</tbody></table></div>")
+
+
+def md_to_html(text):
+    lines = text.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+        m = re.match(r"^```(\S*)\s*$", line)
+        if m:  # fenced code
+            lang, j, buf = m.group(1), i + 1, []
+            while j < len(lines) and not lines[j].startswith("```"):
+                buf.append(lines[j])
+                j += 1
+            cls = f' class="language-{esc(lang)}"' if lang else ""
+            out.append(f"<pre><code{cls}>{esc(chr(10).join(buf))}</code></pre>")
+            i = j + 1
+            continue
+        m = re.match(r"^(#{1,6})\s+(.*)", line)
+        if m:
+            lvl = len(m.group(1))
+            out.append(f"<h{lvl}>{md_inline(m.group(2).strip())}</h{lvl}>")
+            i += 1
+            continue
+        if re.match(r"^(\*{3,}|-{3,}|_{3,})\s*$", line):
+            out.append("<hr>")
+            i += 1
+            continue
+        if line.startswith(">"):
+            buf = []
+            while i < len(lines) and lines[i].startswith(">"):
+                buf.append(re.sub(r"^>\s?", "", lines[i]))
+                i += 1
+            out.append(f"<blockquote>{md_to_html(chr(10).join(buf))}</blockquote>")
+            continue
+        if re.match(r"^\s*([-*+]|\d+[.)])\s+", line):
+            i, block = _md_list(lines, i)
+            out.append(block)
+            continue
+        if _is_table(lines, i):
+            i, block = _md_table(lines, i)
+            out.append(block)
+            continue
+        buf = []  # paragraph
+        while i < len(lines) and lines[i].strip() and not _is_block_start(lines, i):
+            buf.append(lines[i].strip())
+            i += 1
+        out.append(f"<p>{md_inline(' '.join(buf))}</p>")
+    return "\n".join(out)
+
+
+def load_posts():
+    """posts.json is the index; each post's source lives in posts/<slug>/index.md."""
+    posts = []
+    for entry in load("posts"):
+        md_path = POSTS / entry["slug"] / "index.md"
+        if not md_path.exists():
+            continue
+        meta, body = parse_front_matter(md_path.read_text(encoding="utf-8"))
+        m = re.match(r"\s*#\s+(.+)\n", body)
+        if m:  # the page already shows the title as <h1>; drop a duplicate one
+            body = body[m.end():]
+        posts.append({
+            "slug": entry["slug"],
+            "title": entry.get("title") or meta.get("title") or (m.group(1).strip() if m else entry["slug"]),
+            "date": entry.get("date") or meta.get("date") or "",
+            "content": md_to_html(body),
+        })
+    posts.sort(key=lambda p: date_key(p["date"]), reverse=True)
+    return posts
+
+
 def collect_updates(updates, pubs, posts, experience):
     """Merge manual updates with entries auto-derived from the other modules."""
     items = [{"key": date_key(u["date"]), "date": fmt_date(u["date"]) or u["date"],
@@ -66,7 +245,7 @@ def collect_updates(updates, pubs, posts, experience):
             "key": date_key(p.get("date", "")),
             "date": fmt_date(p.get("date", "")),
             "kind": "blog",
-            "text": f'<a href="/blog/{esc(p["slug"])}.html">{esc(p["title"])}</a>.',
+            "text": f'<a href="/blog/{esc(p["slug"])}/">{esc(p["title"])}</a>.',
         })
     for e in experience:
         items.append({
@@ -248,8 +427,8 @@ def render_blog_index(site, posts):
     if posts:
         rows = "\n".join(
             f'        <li><span class="date">{esc(p["date"])}</span>'
-            f'<a href="/blog/{esc(p["slug"])}.html">{esc(p["title"])}</a></li>'
-            for p in sorted(posts, key=lambda p: p.get("date", ""), reverse=True)
+            f'<a href="/blog/{esc(p["slug"])}/">{esc(p["title"])}</a></li>'
+            for p in posts
         )
         listing = f'      <ul class="post-list">\n{rows}\n      </ul>'
     else:
@@ -265,15 +444,17 @@ def render_blog_index(site, posts):
 def render_post(site, post):
     body = f"""    <article class="hero post">
       <h1>{esc(post["title"])}</h1>
-      <p class="post-meta">{esc(post["date"])}</p>
+      <p class="post-meta">{esc(post["date"])} · <a href="/blog/">← Blog</a></p>
+      <div class="post-content">
 {post["content"]}
+      </div>
     </article>"""
     return page(site, f"{post['title']} · {site['name']}", "Blog", body)
 
 
 def main():
     site = load("site")
-    pubs, posts, experience = load("publications"), load("posts"), load("experience")
+    pubs, posts, experience = load("publications"), load_posts(), load("experience")
     latest = collect_updates(load("updates"), pubs, posts, experience)
 
     out = {
@@ -283,12 +464,22 @@ def main():
         ROOT / "education" / "index.html": render_timeline(site, "Education", load("education")),
         ROOT / "blog" / "index.html": render_blog_index(site, posts),
     }
-    for post in posts:
-        out[ROOT / "blog" / f"{post['slug']}.html"] = render_post(site, post)
 
-    for old in (ROOT / "blog").glob("*.html"):
-        if old not in out:
+    blog = ROOT / "blog"
+    blog.mkdir(exist_ok=True)
+    slugs = {p["slug"] for p in posts}
+    for old in blog.glob("*.html"):  # legacy flat post pages
+        if old.name != "index.html":
             old.unlink()
+    for d in blog.iterdir():  # post dirs no longer in the index
+        if d.is_dir() and d.name not in slugs:
+            shutil.rmtree(d)
+    for post in posts:  # copy each post's assets, then render its page into the dir
+        dst = blog / post["slug"]
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(POSTS / post["slug"], dst, ignore=shutil.ignore_patterns("*.md"))
+        out[dst / "index.html"] = render_post(site, post)
 
     for path, content in out.items():
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -9,17 +9,28 @@ every save (via build.py). Binds to 127.0.0.1 only — local use, do not
 deploy. Only the Python standard library is required.
 """
 import base64
+import datetime
 import http.server
 import importlib
+import io
 import json
+import re
+import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 import build
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
+POSTS = ROOT / "posts"
 ALLOWED = {"site", "updates", "publications", "experience", "education", "posts"}
+
+
+def slugify(s):
+    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
+    return s[:60]
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -63,6 +74,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._send(200, b'{"ok":true}', "application/json")
             elif self.path == "/api/avatar":
                 self.save_avatar(req)
+            elif self.path == "/api/blog/upload":
+                self.blog_upload(req)
+            elif self.path == "/api/blog/delete":
+                self.blog_delete(req)
             else:
                 self._send(404, b'{"error":"not found"}', "application/json")
         except Exception as e:  # 把错误报给前端而不是让请求挂起
@@ -90,6 +105,73 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         importlib.reload(build).main()
         self._send(200, json.dumps({"ok": True, "avatar": site["avatar"]}).encode("utf-8"),
                    "application/json")
+
+    def blog_upload(self, req):
+        raw = base64.b64decode(req.get("data", ""))
+        if len(raw) > 50 * 1024 * 1024:
+            return self._send(400, b'{"error":"zip larger than 50MB"}', "application/json")
+        slug = slugify(req.get("slug") or Path(req.get("filename", "")).stem)
+        if not slug:
+            return self._send(400, b'{"error":"cannot derive a slug"}', "application/json")
+
+        zf = zipfile.ZipFile(io.BytesIO(raw))
+        names = [n for n in zf.namelist()
+                 if not n.endswith("/") and "__MACOSX" not in n
+                 and not Path(n).name.startswith(".")]
+        mds = [n for n in names if n.lower().endswith(".md")]
+        if not mds:
+            return self._send(400, json.dumps({"error": "压缩包里没有 .md 文件"}).encode("utf-8"),
+                              "application/json")
+        # 优先根目录、名为 index/readme/post 的 md；其余文件相对它的目录解压
+        md_name = min(mds, key=lambda n: (
+            n.count("/"), 0 if Path(n).stem.lower() in {"index", "readme", "post"} else 1, n))
+        base = str(Path(md_name).parent)
+        base = "" if base == "." else base + "/"
+
+        dest = POSTS / slug
+        if dest.exists():
+            shutil.rmtree(dest)
+        for n in names:
+            if base and not n.startswith(base):
+                continue
+            rel = Path(n[len(base):]) if n != md_name else Path("index.md")
+            if not rel.parts or ".." in rel.parts:  # zip-slip 防护
+                continue
+            target = dest / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(zf.read(n))
+
+        b = importlib.reload(build)
+        meta, body = b.parse_front_matter((dest / "index.md").read_text(encoding="utf-8"))
+        m = re.match(r"\s*#\s+(.+)\n", body)
+        title = meta.get("title") or (m.group(1).strip() if m else slug)
+        date = meta.get("date") or datetime.date.today().strftime("%Y-%m-%d")
+
+        posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
+        replaced = next((p for p in posts if p.get("slug") == slug), None)
+        if replaced:  # 替换正文时保留后台里改过的标题/日期
+            title, date = replaced.get("title") or title, replaced.get("date") or date
+            posts.remove(replaced)
+        posts.insert(0, {"slug": slug, "title": title, "date": date})
+        (DATA / "posts.json").write_text(
+            json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        b.main()
+        self._send(200, json.dumps({"ok": True, "slug": slug, "title": title,
+                                    "replaced": bool(replaced)}).encode("utf-8"),
+                   "application/json")
+
+    def blog_delete(self, req):
+        slug = req.get("slug", "")
+        posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
+        if not any(p.get("slug") == slug for p in posts):
+            return self._send(404, b'{"error":"no such post"}', "application/json")
+        shutil.rmtree(POSTS / slug, ignore_errors=True)
+        shutil.rmtree(ROOT / "blog" / slug, ignore_errors=True)
+        posts = [p for p in posts if p.get("slug") != slug]
+        (DATA / "posts.json").write_text(
+            json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        importlib.reload(build).main()
+        self._send(200, b'{"ok":true}', "application/json")
 
     def log_message(self, fmt, *args):
         pass  # 安静一点
@@ -181,13 +263,7 @@ const SCHEMAS = {
       {k:'org', label:'学校'},
       {k:'desc', label:'一句话描述（可含 <a href="…">链接</a>）', type:'textarea', rows:2}],
     blank:{date:'', title:'', org:'', desc:''} },
-  posts: { title:'博客', hint:'正文写 HTML（段落用 <p>…</p>）。保存后生成 /blog/<slug>.html。',
-    fields:[
-      {k:'slug', label:'Slug（URL 名，小写连字符，如 legendre-transform）', short:true},
-      {k:'date', label:'日期（如 2026-09-01）', short:true},
-      {k:'title', label:'标题'},
-      {k:'content', label:'正文 HTML', type:'textarea', rows:14}],
-    blank:{slug:'', date:'', title:'', content:''} },
+  posts: { title:'博客', hint:'每篇博客独立管理：上传一个 zip（内含一个 Markdown 文件 + 它用相对路径引用的图片）。标题/日期从 front matter（--- title: … / date: … ---）或第一个 # 标题解析，也可在下方修改后点「保存并重建」。', blog:true },
   site: { title:'站点信息', hint:'姓名、签名、格言与联系方式链接。', site:true },
 };
 const ORDER = ['updates','publications','experience','education','posts','site'];
@@ -320,12 +396,96 @@ function renderSite() {
   $('addBtn').hidden = true;
 }
 
+function readB64(f) {
+  return new Promise((ok, err) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result.split(',')[1]);
+    r.onerror = err;
+    r.readAsDataURL(f);
+  });
+}
+
+async function postJSON(url, payload) {
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)});
+  const out = await res.json();
+  if (!res.ok) throw new Error(out.error || res.status);
+  return out;
+}
+
+async function uploadZip(fileInput, slug) {
+  const f = fileInput.files[0];
+  if (!f) return;
+  const msg = $('msg');
+  msg.className = ''; msg.textContent = '上传解析中…';
+  try {
+    const out = await postJSON('/api/blog/upload',
+      {filename: f.name, slug: slug || '', data: await readB64(f)});
+    data = await (await fetch('/api/data')).json();
+    render();
+    msg.className = 'ok';
+    msg.textContent = (out.replaced ? '✓ 已替换并重建：' : '✓ 已发布并重建：') +
+      out.slug + '（' + out.title + '）';
+  } catch (e) {
+    msg.className = 'err'; msg.textContent = '上传失败：' + e.message;
+  }
+}
+
+function renderBlog() {
+  const list = $('list');
+  list.replaceChildren();
+
+  const up = el('div', {class:'row'});
+  up.append(el('label', {}, '上传新博客（zip）'));
+  const line = el('div', {style:'display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap'});
+  const slugIn = el('input', {class:'short', placeholder:'slug（可留空，取 zip 文件名）'});
+  const file = el('input', {type:'file', accept:'.zip,application/zip', style:'border:none;padding:0'});
+  file.onchange = () => uploadZip(file, slugIn.value);
+  line.append(slugIn, file);
+  up.append(line);
+  up.append(el('div', {class:'hint', style:'margin:0.5rem 0 0'},
+    'zip 里放一个 .md（可带 front matter）和它引用的图片，图片用相对路径（如 ![](fig1.png)）。slug 相同即覆盖旧文。'));
+  list.append(up);
+
+  data.posts.forEach(p => {
+    const row = el('div', {class:'row'});
+    const head = el('div', {style:'display:flex;gap:0.7rem;align-items:baseline'});
+    head.append(el('strong', {}, p.slug),
+      el('a', {href:'/blog/' + p.slug + '/', target:'_blank', style:'font-size:0.85rem'}, '预览 ↗'));
+    row.append(head);
+    row.append(field(p, {k:'title', label:'标题'}));
+    row.append(field(p, {k:'date', label:'日期（如 2026-09-04）', short:true}));
+    const ops = el('div', {class:'ops'});
+    const rep = el('input', {type:'file', accept:'.zip,application/zip', style:'display:none'});
+    rep.onchange = () => uploadZip(rep, p.slug);
+    const repBtn = el('button', {onclick: () => rep.click()}, '替换 zip');
+    const delBtn = el('button', {class:'del', onclick: async () => {
+      if (!confirm('删除博客「' + p.slug + '」？源文件和页面都会被移除。')) return;
+      const msg = $('msg');
+      try {
+        await postJSON('/api/blog/delete', {slug: p.slug});
+        data = await (await fetch('/api/data')).json();
+        render();
+        msg.className = 'ok'; msg.textContent = '✓ 已删除并重建';
+      } catch (e) {
+        msg.className = 'err'; msg.textContent = '删除失败：' + e.message;
+      }
+    }}, '删除');
+    ops.append(rep, repBtn, delBtn);
+    row.append(ops);
+    list.append(row);
+  });
+  if (!data.posts.length)
+    list.append(el('div', {class:'row', style:'color:var(--muted)'}, '还没有博客，上传一个 zip 开始吧。'));
+  $('addBtn').hidden = true;
+}
+
 function render() {
   const schema = SCHEMAS[cur];
   $('hint').textContent = schema.hint;
   document.querySelectorAll('.tabs button').forEach(b =>
     b.classList.toggle('on', b.dataset.name === cur));
-  schema.site ? renderSite() : renderList();
+  schema.site ? renderSite() : schema.blog ? renderBlog() : renderList();
   $('msg').textContent = '';
 }
 
