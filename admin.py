@@ -16,6 +16,7 @@ import io
 import json
 import re
 import shutil
+import subprocess
 import sys
 import urllib.parse
 import zipfile
@@ -89,6 +90,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.blog_save_md(req)
             elif self.path == "/api/blog/delete":
                 self.blog_delete(req)
+            elif self.path == "/api/publish":
+                self.publish(req)
             else:
                 self._send(404, b'{"error":"not found"}', "application/json")
         except Exception as e:  # 把错误报给前端而不是让请求挂起
@@ -182,14 +185,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         b = importlib.reload(build)
         posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
-        if not any(p.get("slug") == slug for p in posts):  # 新建：从 md 解析标题/日期
-            meta, body = b.parse_front_matter(content)
-            m = re.match(r"\s*#\s+(.+)\n", body)
-            title = meta.get("title") or (m.group(1).strip() if m else slug)
-            date = meta.get("date") or datetime.date.today().strftime("%Y-%m-%d")
-            posts.insert(0, {"slug": slug, "title": title, "date": date})
-            (DATA / "posts.json").write_text(
-                json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # md 是源头：front matter / 首个 # 标题里的标题、日期同步进索引
+        meta, body = b.parse_front_matter(content)
+        m = re.match(r"\s*#\s+(.+)\n", body)
+        md_title = meta.get("title") or (m.group(1).strip() if m else None)
+        md_date = meta.get("date")
+        entry = next((p for p in posts if p.get("slug") == slug), None)
+        if entry is None:
+            posts.insert(0, {"slug": slug, "title": md_title or slug,
+                             "date": md_date or datetime.date.today().strftime("%Y-%m-%d")})
+        else:
+            if md_title:
+                entry["title"] = md_title
+            if md_date:
+                entry["date"] = md_date
+        (DATA / "posts.json").write_text(
+            json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         b.main()
         self._send(200, json.dumps({"ok": True, "slug": slug}).encode("utf-8"), "application/json")
 
@@ -205,6 +216,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         importlib.reload(build).main()
         self._send(200, b'{"ok":true}', "application/json")
+
+    def publish(self, req):
+        def git(*args):
+            return subprocess.run(["git", "-C", str(ROOT), *args],
+                                  capture_output=True, text=True, timeout=60)
+
+        dirty = git("status", "--porcelain").stdout.strip()
+        parts = []
+        if dirty:
+            git("add", "-A")
+            msg = (req.get("message") or "").strip() or \
+                f"Update site content ({datetime.date.today().isoformat()})"
+            r = git("commit", "-m", msg)
+            if r.returncode != 0:
+                return self._send(500, json.dumps(
+                    {"error": (r.stderr or r.stdout).strip()}).encode("utf-8"), "application/json")
+            parts.append("新提交 " + git("rev-parse", "--short", "HEAD").stdout.strip())
+        ahead = git("rev-list", "--count", "@{u}..HEAD").stdout.strip() or "0"
+        if ahead == "0":
+            return self._send(200, json.dumps(
+                {"ok": True, "detail": "没有需要发布的改动，本地与 GitHub 一致"},
+                ensure_ascii=False).encode("utf-8"), "application/json")
+        r = git("push", "origin", "main")
+        if r.returncode != 0:
+            return self._send(500, json.dumps(
+                {"error": (r.stderr or r.stdout).strip()}).encode("utf-8"), "application/json")
+        parts.append(f"已推送 {ahead} 个提交到 GitHub，Pages 一两分钟后生效")
+        self._send(200, json.dumps({"ok": True, "detail": "，".join(parts)},
+                                   ensure_ascii=False).encode("utf-8"), "application/json")
 
     def log_message(self, fmt, *args):
         pass  # 安静一点
@@ -253,6 +293,8 @@ ADMIN_HTML = """<!DOCTYPE html>
 <body>
 <header>
   <h1>主页后台</h1>
+  <button id="pubBtn" style="border:none;border-radius:8px;background:#15803d;color:#fff;
+    padding:0.4rem 1rem;cursor:pointer;font-size:0.9rem">发布到 GitHub</button>
   <a href="/" target="_blank">预览站点 ↗</a>
 </header>
 <div class="tabs" id="tabs"></div>
@@ -605,6 +647,21 @@ async function init() {
   }
   $('addBtn').onclick = () => { data[cur].unshift({...SCHEMAS[cur].blank}); renderList(); };
   $('saveBtn').onclick = save;
+  $('pubBtn').onclick = async () => {
+    const m = prompt('发布到 GitHub（线上站点会更新）。提交说明，留空用默认：', '');
+    if (m === null) return;
+    const msg = $('msg'), btn = $('pubBtn');
+    btn.disabled = true; btn.textContent = '发布中…';
+    msg.className = ''; msg.textContent = '正在提交并推送……';
+    try {
+      const out = await postJSON('/api/publish', {message: m});
+      msg.className = 'ok'; msg.textContent = '✓ ' + out.detail;
+    } catch (e) {
+      msg.className = 'err'; msg.textContent = '发布失败：' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = '发布到 GitHub';
+    }
+  };
   render();
 }
 init();
