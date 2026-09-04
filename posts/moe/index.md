@@ -6,8 +6,6 @@
 > and it lets three Qwen MoE models (35B to 397B) halve their activated experts with MMLU and GSM8K statistically indistinguishable from native.
 > It is **not universal**: on Gemma-4 it recovers only half the loss, and on GLM-4.7 and DeepSeek-V4 it does essentially nothing. The gating function decides.
 
-This post is the consolidated write-up of every experiment in the `moe_breakdown` project. All numbers come from the raw result files under `stats/`; the figures are produced by `blog/make_blog_figs.py`.
-
 ---
 
 ## TL;DR
