@@ -69,14 +69,34 @@ def parse_front_matter(text):
     return meta, text
 
 
+MATH_RE = (r"\$\$.+?\$\$"                                          # $$…$$
+           r"|(?<![\\$])\$(?![\s$])(?:\\.|[^$\\\n])+?(?<!\s)\$(?!\d)"  # $…$
+           r"|\\\(.+?\\\)"                                          # \(…\)
+           r"|\\\[.+?\\\]")                                         # \[…\]
+
+
 def _inline_fmt(text):
+    saved = []  # math is left for client-side KaTeX, shielded from md formatting;
+    # $-delimiters are rewritten to \( \) / \[ \] so the client never scans for
+    # bare $ (which would misfire on dollar amounts in prose)
+
+    def keep(m):
+        s = m.group(0)
+        if s.startswith("$$"):
+            s = "\\[" + s[2:-2] + "\\]"
+        elif s.startswith("$"):
+            s = "\\(" + s[1:-1] + "\\)"
+        saved.append(s)
+        return f"\x00{len(saved) - 1}\x00"
+
+    text = re.sub(MATH_RE, keep, text)
     t = esc(text)
     t = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", r'<img src="\2" alt="\1">', t)
     t = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", r'<a href="\2">\1</a>', t)
     t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
     t = re.sub(r"(?<![\w*])\*([^*]+)\*(?![\w*])", r"<em>\1</em>", t)
     t = re.sub(r"~~([^~]+)~~", r"<del>\1</del>", t)
-    return t
+    return re.sub(r"\x00(\d+)\x00", lambda m: esc(saved[int(m.group(1))]), t)
 
 
 def md_inline(text):
@@ -98,6 +118,7 @@ def _is_block_start(lines, i):
     l = lines[i]
     return bool(re.match(r"^(#{1,6}\s|```|>|\s*([-*+]|\d+[.)])\s)", l)
                 or re.match(r"^(\*{3,}|-{3,}|_{3,})\s*$", l)
+                or l.strip().startswith("$$")
                 or _is_table(lines, i))
 
 
@@ -171,6 +192,21 @@ def md_to_html(text):
                 j += 1
             cls = f' class="language-{esc(lang)}"' if lang else ""
             out.append(f"<pre><code{cls}>{esc(chr(10).join(buf))}</code></pre>")
+            i = j + 1
+            continue
+        if line.strip().startswith("$$"):  # display math block, rendered by KaTeX
+            buf, j = [line], i
+            if not (line.strip().endswith("$$") and len(line.strip()) > 3):
+                j = i + 1
+                while j < len(lines) and "$$" not in lines[j]:
+                    buf.append(lines[j])
+                    j += 1
+                if j < len(lines):
+                    buf.append(lines[j])
+            block = "\n".join(buf).strip()
+            if block.startswith("$$") and block.endswith("$$"):
+                block = "\\[" + block[2:-2] + "\\]"
+            out.append(f'<div class="math-block">{esc(block)}</div>')
             i = j + 1
             continue
         m = re.match(r"^(#{1,6})\s+(.*)", line)
@@ -266,7 +302,16 @@ UPDATE_TAGS = {
 }
 
 
-def page(site, title, active, body):
+KATEX_HEAD = """
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.querySelector('.post-content'),{delimiters:[
+      {left:'\\\\[',right:'\\\\]',display:true},{left:'\\\\(',right:'\\\\)',display:false}],
+      throwOnError:false})"></script>"""
+
+
+def page(site, title, active, body, head=""):
     nav_links = "\n        ".join(
         f'<a href="{url}"{" class=\"active\"" if label == active else ""}>{label}</a>'
         for label, url in NAV
@@ -281,7 +326,7 @@ def page(site, title, active, body):
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css">{head}
 </head>
 <body>
   <header class="site-header">
@@ -449,7 +494,9 @@ def render_post(site, post):
 {post["content"]}
       </div>
     </article>"""
-    return page(site, f"{post['title']} · {site['name']}", "Blog", body)
+    has_math = bool(re.search(r"\\\(|\\\[", post["content"]))
+    return page(site, f"{post['title']} · {site['name']}", "Blog", body,
+                head=KATEX_HEAD if has_math else "")
 
 
 def main():

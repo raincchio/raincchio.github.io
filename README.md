@@ -27,7 +27,8 @@ come from front matter (`--- title: … / date: … ---`) or the first `#`
 heading, and stay editable in the tab. Uploading with the same slug replaces
 the post; source unpacks to `posts/<slug>/index.md`, output is generated at
 `blog/<slug>/`. Markdown subset: headings, emphasis, links, images, code
-(fenced + inline), lists, blockquotes, tables, hr.
+(fenced + inline), lists, blockquotes, tables, hr, and math — `$…$` inline,
+`$$…$$` display, rendered by KaTeX (CDN, loaded only on posts that use it).
 
 ## Structure
 
