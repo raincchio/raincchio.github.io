@@ -375,8 +375,7 @@ def render_home(site, latest):
     body = f"""    <section class="hero home-hero">
       <div class="hero-text">
         <h1>{esc(site["name"])}</h1>
-        <p class="tagline">{esc(site["tagline"])}</p>
-        <p class="goal">“{esc(site["motto"])}”</p>{bio}
+        <p class="tagline">{esc(site["tagline"])}</p>{bio}
         <ul class="links">
           {links}
         </ul>

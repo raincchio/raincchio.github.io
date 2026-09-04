@@ -48,7 +48,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def end_headers(self):
-        # 预览时禁止缓存，保证保存后刷新即见
+        # no caching for previews, so a refresh after save shows the rebuild
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
@@ -80,7 +80,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 (DATA / f"{name}.json").write_text(
                     json.dumps(req["data"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
                 )
-                importlib.reload(build).main()  # 热加载，改 build.py 后无需重启
+                importlib.reload(build).main()  # hot-reload: build.py edits apply without restart
                 self._send(200, b'{"ok":true}', "application/json")
             elif self.path == "/api/avatar":
                 self.save_avatar(req)
@@ -94,7 +94,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.publish(req)
             else:
                 self._send(404, b'{"error":"not found"}', "application/json")
-        except Exception as e:  # 把错误报给前端而不是让请求挂起
+        except Exception as e:  # report to the frontend instead of hanging the request
             self._send(500, json.dumps({"error": str(e)}).encode("utf-8"), "application/json")
 
     def save_avatar(self, req):
@@ -136,7 +136,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not mds:
             return self._send(400, json.dumps({"error": "压缩包里没有 .md 文件"}).encode("utf-8"),
                               "application/json")
-        # 优先根目录、名为 index/readme/post 的 md；其余文件相对它的目录解压
+        # prefer a root-level md named index/readme/post; extract the rest relative to its dir
         md_name = min(mds, key=lambda n: (
             n.count("/"), 0 if Path(n).stem.lower() in {"index", "readme", "post"} else 1, n))
         base = str(Path(md_name).parent)
@@ -149,7 +149,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if base and not n.startswith(base):
                 continue
             rel = Path(n[len(base):]) if n != md_name else Path("index.md")
-            if not rel.parts or ".." in rel.parts:  # zip-slip 防护
+            if not rel.parts or ".." in rel.parts:  # zip-slip guard
                 continue
             target = dest / rel
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -163,7 +163,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
         replaced = next((p for p in posts if p.get("slug") == slug), None)
-        if replaced:  # 替换正文时保留后台里改过的标题/日期
+        if replaced:  # a body replacement keeps title/date edited in the admin
             title, date = replaced.get("title") or title, replaced.get("date") or date
             posts.remove(replaced)
         posts.insert(0, {"slug": slug, "title": title, "date": date})
@@ -185,7 +185,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         b = importlib.reload(build)
         posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
-        # md 是源头：front matter / 首个 # 标题里的标题、日期同步进索引
+        # the md is the source of truth: sync title/date from front matter or the first heading
         meta, body = b.parse_front_matter(content)
         m = re.match(r"\s*#\s+(.+)\n", body)
         md_title = meta.get("title") or (m.group(1).strip() if m else None)
@@ -247,7 +247,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                    ensure_ascii=False).encode("utf-8"), "application/json")
 
     def log_message(self, fmt, *args):
-        pass  # 安静一点
+        pass  # keep the console quiet
 
 
 ADMIN_HTML = """<!DOCTYPE html>
@@ -442,7 +442,6 @@ function renderSite() {
   const scalars = [
     {k:'name', label:'姓名'},
     {k:'tagline', label:'一句话签名（首页标题下方）'},
-    {k:'motto', label:'格言（首页引用）', type:'textarea', rows:2},
     {k:'bio', label:'个人简介（首页 About，可含 HTML 链接）', type:'textarea', rows:4},
     {k:'highlight', label:'论文作者中要加粗的名字'},
     {k:'blog_intro', label:'博客页简介'},
@@ -674,9 +673,9 @@ init();
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     with http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler) as srv:
-        print(f"后台: http://localhost:{port}/admin")
-        print(f"预览: http://localhost:{port}/")
-        print("Ctrl+C 退出")
+        print(f"admin:   http://localhost:{port}/admin")
+        print(f"preview: http://localhost:{port}/")
+        print("Ctrl+C to quit")
         try:
             srv.serve_forever()
         except KeyboardInterrupt:

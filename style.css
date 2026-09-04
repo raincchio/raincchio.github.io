@@ -135,22 +135,13 @@ h2 {
 }
 
 .tagline {
-  color: var(--accent);
-  font-weight: 500;
+  color: var(--text-muted);
   margin: 0.35rem 0 1.25rem;
 }
 
 .bio {
   margin: 0 0 1.25rem;
   color: var(--text);
-}
-
-.goal {
-  font-size: 1.2rem;
-  font-style: italic;
-  color: var(--text-muted);
-  border-left: 3px solid var(--accent);
-  padding-left: 1rem;
 }
 
 .links {
