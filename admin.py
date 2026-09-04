@@ -527,7 +527,8 @@ function renderBlog() {
   up.append(line);
   up.append(el('div', {class:'hint', style:'margin:0.5rem 0 0'},
     'zip 里放一个 .md（可带 front matter）和它引用的图片，图片用相对路径（如 ![](fig1.png)）。' +
-    '公式写 $行内$ 或 $$独立公式$$（KaTeX 渲染）。slug 相同即覆盖旧文。不带图的文章可直接「新建」在线写。'));
+    '公式写 $行内$ 或 $$独立公式$$（KaTeX 渲染）。图片可加宽度：![](fig1.png =60%) 或 =420（像素），缩小后自动居中。' +
+    'slug 相同即覆盖旧文。不带图的文章可直接「新建」在线写。'));
   if (mdNew && mdOpen) {
     up.append(el('div', {style:'margin-top:0.6rem;font-weight:600'}, '新博客：' + mdOpen));
     up.append(mdEditor(mdOpen));

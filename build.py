@@ -89,9 +89,16 @@ def _inline_fmt(text):
         saved.append(s)
         return f"\x00{len(saved) - 1}\x00"
 
+    def img(m):
+        alt, src, w = m.group(1), m.group(2), m.group(3)
+        style = ""
+        if w:  # ![alt](src =60%) or ![alt](src =420) / =420px
+            style = f' style="width:{w if w.endswith("%") else w.rstrip("px") + "px"}"'
+        return f'<img src="{src}" alt="{alt}"{style}>'
+
     text = re.sub(MATH_RE, keep, text)
     t = esc(text)
-    t = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", r'<img src="\2" alt="\1">', t)
+    t = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+=(\d{1,4}(?:px|%)?))?\)", img, t)
     t = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", r'<a href="\2">\1</a>', t)
     t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
     t = re.sub(r"(?<![\w*])\*([^*]+)\*(?![\w*])", r"<em>\1</em>", t)
