@@ -17,6 +17,7 @@ import json
 import re
 import shutil
 import sys
+import urllib.parse
 import zipfile
 from pathlib import Path
 
@@ -56,6 +57,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/api/data":
             payload = {n: json.loads((DATA / f"{n}.json").read_text(encoding="utf-8")) for n in ALLOWED}
             self._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        elif self.path.startswith("/api/blog/md?"):
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            slug = (qs.get("slug") or [""])[0]
+            md = POSTS / slug / "index.md"
+            if slugify(slug) != slug or not slug or not md.exists():
+                return self._send(404, b'{"error":"no such post"}', "application/json")
+            self._send(200, json.dumps({"slug": slug, "content": md.read_text(encoding="utf-8")}).encode("utf-8"),
+                       "application/json")
         else:
             super().do_GET()
 
@@ -76,6 +85,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.save_avatar(req)
             elif self.path == "/api/blog/upload":
                 self.blog_upload(req)
+            elif self.path == "/api/blog/md":
+                self.blog_save_md(req)
             elif self.path == "/api/blog/delete":
                 self.blog_delete(req)
             else:
@@ -159,6 +170,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self._send(200, json.dumps({"ok": True, "slug": slug, "title": title,
                                     "replaced": bool(replaced)}).encode("utf-8"),
                    "application/json")
+
+    def blog_save_md(self, req):
+        slug = req.get("slug", "")
+        if not slug or slugify(slug) != slug:
+            return self._send(400, b'{"error":"bad slug"}', "application/json")
+        content = req.get("content", "")
+        dest = POSTS / slug
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "index.md").write_text(content, encoding="utf-8")
+
+        b = importlib.reload(build)
+        posts = json.loads((DATA / "posts.json").read_text(encoding="utf-8"))
+        if not any(p.get("slug") == slug for p in posts):  # 新建：从 md 解析标题/日期
+            meta, body = b.parse_front_matter(content)
+            m = re.match(r"\s*#\s+(.+)\n", body)
+            title = meta.get("title") or (m.group(1).strip() if m else slug)
+            date = meta.get("date") or datetime.date.today().strftime("%Y-%m-%d")
+            posts.insert(0, {"slug": slug, "title": title, "date": date})
+            (DATA / "posts.json").write_text(
+                json.dumps(posts, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        b.main()
+        self._send(200, json.dumps({"ok": True, "slug": slug}).encode("utf-8"), "application/json")
 
     def blog_delete(self, req):
         slug = req.get("slug", "")
@@ -260,7 +293,7 @@ const SCHEMAS = {
       {k:'org', label:'学校'},
       {k:'desc', label:'一句话描述（可含 <a href="…">链接</a>）', type:'textarea', rows:2}],
     blank:{date:'', title:'', org:'', desc:''} },
-  posts: { title:'博客', hint:'每篇博客独立管理：上传一个 zip（内含一个 Markdown 文件 + 它用相对路径引用的图片）。标题/日期从 front matter（--- title: … / date: … ---）或第一个 # 标题解析，也可在下方修改后点「保存并重建」。', blog:true },
+  posts: { title:'博客', hint:'每篇博客独立管理：上传 zip（Markdown + 图片）或直接「编辑 Markdown」在线改正文。标题/日期从 front matter（--- title: … / date: … ---）或第一个 # 标题解析，也可在下方修改后点「保存并重建」。', blog:true },
   site: { title:'站点信息', hint:'姓名、签名、格言与联系方式链接。', site:true },
 };
 const ORDER = ['updates','publications','experience','education','posts','site'];
@@ -428,6 +461,50 @@ async function uploadZip(fileInput, slug) {
   }
 }
 
+let mdOpen = null, mdDraft = '', mdNew = false;
+
+function mdEditor(slug) {
+  const wrap = el('div', {style:'margin-top:0.7rem'});
+  const ta = el('textarea', {rows:24,
+    style:'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.55',
+    oninput: e => mdDraft = e.target.value});
+  ta.value = mdDraft;
+  const bar = el('div', {class:'ops', style:'justify-content:flex-start'});
+  bar.append(
+    el('button', {onclick: () => saveMd(slug)}, '保存 Markdown 并重建'),
+    el('button', {onclick: () => { mdOpen = null; mdNew = false; render(); }}, '收起'));
+  wrap.append(ta, bar);
+  return wrap;
+}
+
+async function openMd(slug) {
+  if (mdOpen === slug && !mdNew) { mdOpen = null; render(); return; }
+  const msg = $('msg');
+  try {
+    const res = await fetch('/api/blog/md?slug=' + encodeURIComponent(slug));
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || res.status);
+    mdNew = false; mdOpen = slug; mdDraft = out.content;
+    render();
+  } catch (e) {
+    msg.className = 'err'; msg.textContent = '读取失败：' + e.message;
+  }
+}
+
+async function saveMd(slug) {
+  const msg = $('msg');
+  msg.className = ''; msg.textContent = '保存中…';
+  try {
+    await postJSON('/api/blog/md', {slug, content: mdDraft});
+    data = await (await fetch('/api/data')).json();
+    mdNew = false;
+    render();
+    $('msg').className = 'ok'; $('msg').textContent = '✓ 已保存并重建：' + slug + '，刷新预览即可看到';
+  } catch (e) {
+    msg.className = 'err'; msg.textContent = '保存失败：' + e.message;
+  }
+}
+
 function renderBlog() {
   const list = $('list');
   list.replaceChildren();
@@ -438,11 +515,23 @@ function renderBlog() {
   const slugIn = el('input', {class:'short', placeholder:'slug（可留空，取 zip 文件名）'});
   const file = el('input', {type:'file', accept:'.zip,application/zip', style:'border:none;padding:0'});
   file.onchange = () => uploadZip(file, slugIn.value);
-  line.append(slugIn, file);
+  const newBtn = el('button', {style:'border:1px solid var(--border);background:#fff;border-radius:6px;padding:0.3rem 0.8rem;cursor:pointer',
+    onclick: () => {
+      const slug = slugIn.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      if (!slug) { $('msg').className='err'; $('msg').textContent='新建前先在左边填一个 slug'; return; }
+      mdNew = true; mdOpen = slug;
+      mdDraft = '---\ntitle: 文章标题\ndate: ' + new Date().toISOString().slice(0,10) + '\n---\n\n正文……\n';
+      render();
+    }}, '＋ 新建（纯 Markdown）');
+  line.append(slugIn, file, newBtn);
   up.append(line);
   up.append(el('div', {class:'hint', style:'margin:0.5rem 0 0'},
     'zip 里放一个 .md（可带 front matter）和它引用的图片，图片用相对路径（如 ![](fig1.png)）。' +
-    '公式写 $行内$ 或 $$独立公式$$（KaTeX 渲染）。slug 相同即覆盖旧文。'));
+    '公式写 $行内$ 或 $$独立公式$$（KaTeX 渲染）。slug 相同即覆盖旧文。不带图的文章可直接「新建」在线写。'));
+  if (mdNew && mdOpen) {
+    up.append(el('div', {style:'margin-top:0.6rem;font-weight:600'}, '新博客：' + mdOpen));
+    up.append(mdEditor(mdOpen));
+  }
   list.append(up);
 
   data.posts.forEach(p => {
@@ -456,21 +545,25 @@ function renderBlog() {
     const ops = el('div', {class:'ops'});
     const rep = el('input', {type:'file', accept:'.zip,application/zip', style:'display:none'});
     rep.onchange = () => uploadZip(rep, p.slug);
+    const editBtn = el('button', {onclick: () => openMd(p.slug)},
+      mdOpen === p.slug && !mdNew ? '收起编辑' : '编辑 Markdown');
     const repBtn = el('button', {onclick: () => rep.click()}, '替换 zip');
     const delBtn = el('button', {class:'del', onclick: async () => {
       if (!confirm('删除博客「' + p.slug + '」？源文件和页面都会被移除。')) return;
       const msg = $('msg');
       try {
         await postJSON('/api/blog/delete', {slug: p.slug});
+        if (mdOpen === p.slug) { mdOpen = null; mdNew = false; }
         data = await (await fetch('/api/data')).json();
         render();
-        msg.className = 'ok'; msg.textContent = '✓ 已删除并重建';
+        $('msg').className = 'ok'; $('msg').textContent = '✓ 已删除并重建';
       } catch (e) {
         msg.className = 'err'; msg.textContent = '删除失败：' + e.message;
       }
     }}, '删除');
-    ops.append(rep, repBtn, delBtn);
+    ops.append(rep, editBtn, repBtn, delBtn);
     row.append(ops);
+    if (mdOpen === p.slug && !mdNew) row.append(mdEditor(p.slug));
     list.append(row);
   });
   if (!data.posts.length)
