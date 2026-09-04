@@ -520,7 +520,7 @@ function renderBlog() {
       const slug = slugIn.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
       if (!slug) { $('msg').className='err'; $('msg').textContent='新建前先在左边填一个 slug'; return; }
       mdNew = true; mdOpen = slug;
-      mdDraft = '---\ntitle: 文章标题\ndate: ' + new Date().toISOString().slice(0,10) + '\n---\n\n正文……\n';
+      mdDraft = '---\\ntitle: 文章标题\\ndate: ' + new Date().toISOString().slice(0,10) + '\\n---\\n\\n正文……\\n';
       render();
     }}, '＋ 新建（纯 Markdown）');
   line.append(slugIn, file, newBtn);
