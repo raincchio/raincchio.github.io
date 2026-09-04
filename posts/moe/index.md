@@ -128,20 +128,22 @@ Two consequences:
 
 The native router (Qwen, and most modern MoEs):
 
-```
-p   = softmax(W_g · x)                 # over all E experts
-T_k = topk(p, k)
-w_i = p_i / Σ_{j∈T_k} p_j,  i ∈ T_k   # renormalize, weights sum to 1
-y   = Σ w_i · Expert_i(x) + g_sh · Expert_sh(x)
-```
+$$
+\begin{aligned}
+p &= \operatorname{softmax}(W_g\, x) && \text{router scores over all } E \text{ experts} \\
+T_k &= \operatorname{topk}(p,\, k) \\
+w_i &= \frac{p_i}{\sum_{j \in T_k} p_j},\quad i \in T_k && \text{renormalize: weights sum to } 1 \\
+y &= \sum_{i \in T_k} w_i\, \mathrm{Expert}_i(x) + g_{\mathrm{sh}}\, \mathrm{Expert}_{\mathrm{sh}}(x)
+\end{aligned}
+$$
 
-The denominator `m_k(x) = Σ_{j∈T_k} p_j` is the mass of the selected set, and it grows with k. Renormalization multiplies by `1/m_k`, a gain calibrated during training at k=8. Drop k to 4 and `m_4 < m_8`, so the gain **goes up**, pushing the expert branch's contribution to the residual stream into a regime the model never saw. "How much does top-4 lose" therefore conflates two effects: four fewer experts, and a miscalibrated gain.
+The denominator $m_k(x) = \sum_{j \in T_k} p_j$ is the mass of the selected set, and it grows with k. Renormalization multiplies by $1/m_k$, a gain calibrated during training at k=8. Drop k to 4 and $m_4 < m_8$, so the gain **goes up**, pushing the expert branch's contribution to the residual stream into a regime the model never saw. "How much does top-4 lose" therefore conflates two effects: four fewer experts, and a miscalibrated gain.
 
 We change only the index set of the denominator:
 
-```
-w_i = p_i / Σ_{j∈T_{k2}} p_j,   i ∈ T_{k1},   k1 ≤ k2
-```
+$$
+w_i = \frac{p_i}{\sum_{j \in T_{k_2}} p_j}, \qquad i \in T_{k_1}, \quad k_1 \le k_2
+$$
 
 `k₁` controls compute (how many expert FFNs actually run), `k₂` controls gain. It strictly generalizes existing practice:
 
@@ -149,14 +151,14 @@ w_i = p_i / Σ_{j∈T_{k2}} p_j,   i ∈ T_{k1},   k1 ≤ k2
 |---|---|
 | k₂ = k₁ | standard renormalization (every implementation's default) |
 | k₂ = k (trained value) | gain anchored to what training calibrated |
-| k₂ = E | no renormalization at all (Σp = 1) |
+| k₂ = E | no renormalization at all ($\sum p = 1$) |
 | k₂ > k | gain below the trained value, **adaptive per token** |
 
 ![Method schematic](figs/fig2_method.png)
 
 *Figure 4: Using the mean routing profile of Qwen3.6-35B. Left: native top-8, gain 5.6×. Middle: the default reduction to top-4 shrinks the denominator too, gain rises to 8.3×. Right: activate 4 but normalize by the top-16 mass, gain falls to 3.8× and the weights sum to 0.47.*
 
-When k₂ > k₁ the weights no longer sum to one but to `m_{k1}(x) / m_{k2}(x)`, a per-token scaling rather than a constant. On the 35B model the average is 0.854 for (k₁, k₂) = (6, 8) and 0.592 for (6, 16), so the discrete k₂ grid already covers the range a tuned continuous scalar would explore, without introducing a continuous hyperparameter.
+When k₂ > k₁ the weights no longer sum to one but to $m_{k_1}(x)/m_{k_2}(x)$, a per-token scaling rather than a constant. On the 35B model the average is 0.854 for (k₁, k₂) = (6, 8) and 0.592 for (6, 16), so the discrete k₂ grid already covers the range a tuned continuous scalar would explore, without introducing a continuous hyperparameter.
 
 **Cost**: only k₁ expert FFNs are evaluated, so the compute saving is exactly that of lowering k to k₁. The larger k₂ is just a wider top-k over router logits that are computed for all E experts anyway. Implementation is a drop-in replacement of the router's `forward` at inference time; no weights change:
 
@@ -332,7 +334,7 @@ On the 35B model, lowering k₁ from 8 to 4 halves routed-expert activated param
 
 ### 7.1 Gemma-4-26B-A4B: half the way
 
-This branch ran before the k₁/k₂ parameterization, with a global scalar gain `w = α · p / m_{k1}`, MMLU n=1000, instruction-tuned variant under its chat template (baseline 80.40%):
+This branch ran before the k₁/k₂ parameterization, with a global scalar gain $w = \alpha \cdot p / m_{k_1}$, MMLU n=1000, instruction-tuned variant under its chat template (baseline 80.40%):
 
 | α | Acc. | Δ (pp) | p |
 |---|---|---|---|

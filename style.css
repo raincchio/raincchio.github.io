@@ -402,6 +402,7 @@ h2 {
 .post-content table {
   border-collapse: collapse;
   font-size: 0.92rem;
+  margin: 0 auto;
 }
 
 .post-content th,

@@ -8,6 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.querySelector('.post-content'),{delimiters:[
+      {left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],
+      throwOnError:false})"></script>
 </head>
 <body>
   <header class="site-header">
@@ -72,18 +78,24 @@
 <hr>
 <h2>4. The method: decouple the renormalization denominator</h2>
 <p>The native router (Qwen, and most modern MoEs):</p>
-<pre><code>p   = softmax(W_g · x)                 # over all E experts
-T_k = topk(p, k)
-w_i = p_i / Σ_{j∈T_k} p_j,  i ∈ T_k   # renormalize, weights sum to 1
-y   = Σ w_i · Expert_i(x) + g_sh · Expert_sh(x)</code></pre>
-<p>The denominator <code>m_k(x) = Σ_{j∈T_k} p_j</code> is the mass of the selected set, and it grows with k. Renormalization multiplies by <code>1/m_k</code>, a gain calibrated during training at k=8. Drop k to 4 and <code>m_4 &lt; m_8</code>, so the gain <strong>goes up</strong>, pushing the expert branch&#x27;s contribution to the residual stream into a regime the model never saw. &quot;How much does top-4 lose&quot; therefore conflates two effects: four fewer experts, and a miscalibrated gain.</p>
+<div class="math-block">\[
+\begin{aligned}
+p &amp;= \operatorname{softmax}(W_g\, x) &amp;&amp; \text{router scores over all } E \text{ experts} \\
+T_k &amp;= \operatorname{topk}(p,\, k) \\
+w_i &amp;= \frac{p_i}{\sum_{j \in T_k} p_j},\quad i \in T_k &amp;&amp; \text{renormalize: weights sum to } 1 \\
+y &amp;= \sum_{i \in T_k} w_i\, \mathrm{Expert}_i(x) + g_{\mathrm{sh}}\, \mathrm{Expert}_{\mathrm{sh}}(x)
+\end{aligned}
+\]</div>
+<p>The denominator \(m_k(x) = \sum_{j \in T_k} p_j\) is the mass of the selected set, and it grows with k. Renormalization multiplies by \(1/m_k\), a gain calibrated during training at k=8. Drop k to 4 and \(m_4 &lt; m_8\), so the gain <strong>goes up</strong>, pushing the expert branch&#x27;s contribution to the residual stream into a regime the model never saw. &quot;How much does top-4 lose&quot; therefore conflates two effects: four fewer experts, and a miscalibrated gain.</p>
 <p>We change only the index set of the denominator:</p>
-<pre><code>w_i = p_i / Σ_{j∈T_{k2}} p_j,   i ∈ T_{k1},   k1 ≤ k2</code></pre>
+<div class="math-block">\[
+w_i = \frac{p_i}{\sum_{j \in T_{k_2}} p_j}, \qquad i \in T_{k_1}, \quad k_1 \le k_2
+\]</div>
 <p><code>k₁</code> controls compute (how many expert FFNs actually run), <code>k₂</code> controls gain. It strictly generalizes existing practice:</p>
-<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Meaning</th></tr></thead><tbody><tr><td>k₂ = k₁</td><td>standard renormalization (every implementation&#x27;s default)</td></tr><tr><td>k₂ = k (trained value)</td><td>gain anchored to what training calibrated</td></tr><tr><td>k₂ = E</td><td>no renormalization at all (Σp = 1)</td></tr><tr><td>k₂ &gt; k</td><td>gain below the trained value, <strong>adaptive per token</strong></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Meaning</th></tr></thead><tbody><tr><td>k₂ = k₁</td><td>standard renormalization (every implementation&#x27;s default)</td></tr><tr><td>k₂ = k (trained value)</td><td>gain anchored to what training calibrated</td></tr><tr><td>k₂ = E</td><td>no renormalization at all (\(\sum p = 1\))</td></tr><tr><td>k₂ &gt; k</td><td>gain below the trained value, <strong>adaptive per token</strong></td></tr></tbody></table></div>
 <p><img src="figs/fig2_method.png" alt="Method schematic"></p>
 <p><em>Figure 4: Using the mean routing profile of Qwen3.6-35B. Left: native top-8, gain 5.6×. Middle: the default reduction to top-4 shrinks the denominator too, gain rises to 8.3×. Right: activate 4 but normalize by the top-16 mass, gain falls to 3.8× and the weights sum to 0.47.</em></p>
-<p>When k₂ &gt; k₁ the weights no longer sum to one but to <code>m_{k1}(x) / m_{k2}(x)</code>, a per-token scaling rather than a constant. On the 35B model the average is 0.854 for (k₁, k₂) = (6, 8) and 0.592 for (6, 16), so the discrete k₂ grid already covers the range a tuned continuous scalar would explore, without introducing a continuous hyperparameter.</p>
+<p>When k₂ &gt; k₁ the weights no longer sum to one but to \(m_{k_1}(x)/m_{k_2}(x)\), a per-token scaling rather than a constant. On the 35B model the average is 0.854 for (k₁, k₂) = (6, 8) and 0.592 for (6, 16), so the discrete k₂ grid already covers the range a tuned continuous scalar would explore, without introducing a continuous hyperparameter.</p>
 <p><strong>Cost</strong>: only k₁ expert FFNs are evaluated, so the compute saving is exactly that of lowering k to k₁. The larger k₂ is just a wider top-k over router logits that are computed for all E experts anyway. Implementation is a drop-in replacement of the router&#x27;s <code>forward</code> at inference time; no weights change:</p>
 <pre><code class="language-python">def patched_forward(self, hidden_states):
     hidden_states = hidden_states.reshape(-1, self.hidden_dim)
@@ -131,7 +143,7 @@ y   = Σ w_i · Expert_i(x) + g_sh · Expert_sh(x)</code></pre>
 <p><em>Figure 8: MMLU change for &quot;lower k with standard renormalization&quot; versus &quot;best gain setting&quot; on six models. Green = indistinguishable from native; orange = helps but still significantly worse, or no help. Gemma, GLM and DeepSeek use n=1000; Gemma and GLM use the earlier scalar-gain parameterization (α or s), so their numbers are not directly comparable to the Qwen k₁/k₂ results.</em></p>
 <div class="table-wrap"><table><thead><tr><th></th><th>Qwen3.6</th><th>Qwen3.5</th><th>Qwen3.8-Flash</th><th>Gemma-4</th><th>GLM-4.7</th><th>DeepSeek-V4</th></tr></thead><tbody><tr><td>E / k</td><td>256 / 8</td><td>512 / 10</td><td>512 / 10</td><td>128 / 8</td><td>64 / 4</td><td>256 / 6</td></tr><tr><td>Gate score</td><td>softmax</td><td>softmax</td><td>softmax</td><td>softmax (learned temperature)</td><td>sigmoid + selection bias</td><td>sqrtsoftplus + selection bias</td></tr><tr><td>Fixed scale after renorm.</td><td>none (implicit 1.0)</td><td>none</td><td>none</td><td>per-expert scale, learned ≈1.0</td><td>hand-set 1.8</td><td>hand-set 1.5</td></tr><tr><td>Mass in trained top-k</td><td>0.18</td><td>0.19</td><td>0.15</td><td>0.30</td><td>—</td><td>—</td></tr><tr><td>Tuning the gain helps</td><td>yes</td><td>yes</td><td>yes</td><td>yes (+1.0 pp)</td><td>yes (+2.3 pp)</td><td><strong>no</strong></td></tr><tr><td>20–25% fewer experts, lossless</td><td>yes</td><td>yes</td><td>yes</td><td>no (−1.30, p=0.079 borderline)</td><td>no (−1.50, significant)</td><td>yes (6→5, already free by default)</td></tr><tr><td>Half the experts, lossless</td><td>yes</td><td>yes</td><td>yes</td><td>not tested</td><td>no</td><td>no (−1.50, significant)</td></tr></tbody></table></div>
 <h3>7.1 Gemma-4-26B-A4B: half the way</h3>
-<p>This branch ran before the k₁/k₂ parameterization, with a global scalar gain <code>w = α · p / m_{k1}</code>, MMLU n=1000, instruction-tuned variant under its chat template (baseline 80.40%):</p>
+<p>This branch ran before the k₁/k₂ parameterization, with a global scalar gain \(w = \alpha \cdot p / m_{k_1}\), MMLU n=1000, instruction-tuned variant under its chat template (baseline 80.40%):</p>
 <div class="table-wrap"><table><thead><tr><th>α</th><th>Acc.</th><th>Δ (pp)</th><th>p</th></tr></thead><tbody><tr><td>1.00 (native renormalization)</td><td>78.10%</td><td>−2.30</td><td>0.0018</td></tr><tr><td>0.90</td><td>78.60%</td><td>−1.80</td><td>0.015</td></tr><tr><td>0.85 (the &quot;natural&quot; ratio m₆/m₈)</td><td>78.60%</td><td>−1.80</td><td>0.020</td></tr><tr><td><strong>0.80</strong></td><td><strong>79.10%</strong></td><td><strong>−1.30</strong></td><td><strong>0.079</strong></td></tr><tr><td>0.75</td><td>78.80%</td><td>−1.60</td><td>0.033</td></tr></tbody></table></div>
 <p>The gain helps (1.0 pp recovered, the only non-significant setting) but does not return to baseline. This matches the mechanism: Gemma&#x27;s top-8 mass is 0.30, so the renormalization gain is 3.3× rather than 5.5× and is simply less load-bearing. On the base variant, removing renormalization entirely (k₂=E) costs only +0.7% perplexity and is actually better than standard renormalization at k₁=6, whereas the identical intervention costs +356% on Qwen.</p>
 <p>Gemma also supplies an interesting piece of side evidence. Its router has two learnable scale parameters. The pre-softmax temperature <code>router.scale</code> was trained hard, from 1.0 to 32.06 ± 0.02, near-constant across all 30 layers. The post-selection amplitude <code>per_expert_scale</code> stayed at initialization: all 3840 values are 1.000 ± 0.011, because it is mathematically redundant with each expert&#x27;s <code>down_proj</code> and the gradient flows to the much larger weights instead. <strong>The amplitude degree of freedom was never optimized by training on any model we examined</strong>: Qwen has no such parameter, Gemma has one but left it alone, GLM and DeepSeek set it by hand. We are not correcting an already-optimized quantity; we are filling a gap training leaves open.</p>
