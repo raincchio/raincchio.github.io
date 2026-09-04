@@ -9,10 +9,7 @@
     "year": "2026.03",
     "title": "A Tighter Bound for Reward Learning in Reinforcement Learning from Human Feedback",
     "authors": "G. Chen, X. Chen, B. An, Y. Zhang",
-    "venue": "Transactions on Machine Learning Research, 2026",
-    "featured": true,
-    "short": "TMLR 2026",
-    "note": "A tighter theoretical bound for reward learning in RLHF."
+    "venue": "Transactions on Machine Learning Research, 2026"
   },
   {
     "year": "2026.03",
@@ -42,10 +39,7 @@
     "year": "2025.11",
     "title": "Universal Stabilization for Maximum Entropy Optimization in Reinforcement Learning",
     "authors": "X. Chen, Y. Li, X. Cao, H. Chen, H. Yao, B. An, Y. Chang",
-    "venue": "IEEE Transactions on Neural Networks and Learning Systems, 2025",
-    "featured": true,
-    "short": "IEEE TNNLS 2025",
-    "note": "Stabilizing maximum-entropy optimization for continuous-control RL."
+    "venue": "IEEE Transactions on Neural Networks and Learning Systems, 2025"
   },
   {
     "year": "2025.08",
@@ -81,10 +75,7 @@
     "year": "2023.08",
     "title": "The Sufficiency of Off-Policyness and Soft Clipping: PPO Is Still Insufficient According to an Off-Policy Measure",
     "authors": "X. Chen, D. Diao, H. Chen, H. Yao, H. Piao, Z. Sun, Z. Yang, R. Goebel, et al.",
-    "venue": "AAAI Conference on Artificial Intelligence, 2023",
-    "featured": true,
-    "short": "AAAI 2023",
-    "note": "An off-policy measure showing PPO's clipping is insufficient, with soft clipping as the fix."
+    "venue": "AAAI Conference on Artificial Intelligence, 2023"
   },
   {
     "year": "2023.05",

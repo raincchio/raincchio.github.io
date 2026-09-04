@@ -177,49 +177,6 @@ h2 {
   text-decoration: none;
 }
 
-/* ---------- research highlights ---------- */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-
-.feature-card {
-  display: block;
-  color: var(--text);
-}
-
-.feature-card:hover { text-decoration: none; }
-.feature-card:hover .feature-title { color: var(--accent); }
-
-.feature-card p { margin: 0; }
-
-.feature-venue {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  margin-bottom: 0.55rem;
-}
-
-.feature-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  transition: color 0.15s;
-}
-
-.feature-note {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-top: 0.4rem;
-}
-
 /* ---------- update tags ---------- */
 .tag {
   flex-shrink: 0;

@@ -350,7 +350,7 @@ def page(site, title, active, body, head=""):
 """
 
 
-def render_home(site, latest, pubs):
+def render_home(site, latest):
     links = "\n        ".join(
         f'<li><a href="{esc(l["url"])}">{esc(l["label"])}</a></li>' for l in site["links"]
     )
@@ -365,30 +365,6 @@ def render_home(site, latest, pubs):
         avatar = f'\n      <img class="avatar" src="{esc(site["avatar"])}" alt="Portrait of {esc(site["name"])}">'
     bio = f'\n        <p class="bio">{site["bio"]}</p>' if site.get("bio") else ""
 
-    featured = sorted(
-        (p for p in pubs if p.get("featured")),
-        key=lambda p: date_key(p.get("year", "")),
-        reverse=True,
-    )[:3]
-    highlights = ""
-    if featured:
-        cards = "\n".join(
-            f"""        <a class="feature-card" href="/publications/">
-          <p class="feature-venue">{esc(p.get("short") or p["venue"])}</p>
-          <p class="feature-title">{esc(p["title"])}</p>
-          <p class="feature-note">{esc(p.get("note", ""))}</p>
-        </a>"""
-            for p in featured
-        )
-        highlights = f"""
-
-    <section id="highlights">
-      <h2>Research Highlights</h2>
-      <div class="feature-grid">
-{cards}
-      </div>
-    </section>"""
-
     body = f"""    <section class="hero home-hero">
       <div class="hero-text">
         <h1>{esc(site["name"])}</h1>
@@ -398,7 +374,7 @@ def render_home(site, latest, pubs):
           {links}
         </ul>
       </div>{avatar}
-    </section>{highlights}
+    </section>
 
     <section id="updates">
       <h2>Latest Updates</h2>
@@ -505,7 +481,7 @@ def main():
     latest = collect_updates(load("updates"), pubs, posts, experience)
 
     out = {
-        ROOT / "index.html": render_home(site, latest, pubs),
+        ROOT / "index.html": render_home(site, latest),
         ROOT / "publications" / "index.html": render_publications(site, pubs),
         ROOT / "experience" / "index.html": render_timeline(site, "Experience", experience),
         ROOT / "education" / "index.html": render_timeline(site, "Education", load("education")),
