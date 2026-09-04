@@ -110,14 +110,6 @@ h2 {
 
 .home-hero .hero-text { min-width: 0; }
 
-.home-hero h1 {
-  background: linear-gradient(90deg, var(--accent), #7c3aed);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  width: fit-content;
-}
-
 .avatar {
   flex-shrink: 0;
   width: 128px;
