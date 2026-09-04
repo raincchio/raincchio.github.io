@@ -338,7 +338,7 @@ def page(site, title, active, body, head=""):
 <body>
   <header class="site-header">
     <nav>
-      <a class="brand" href="/">{esc(site["name"])}</a>
+      <a class="brand" href="/">Homepage</a>
       <div class="nav-links">
         {nav_links}
       </div>
