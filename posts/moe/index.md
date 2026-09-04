@@ -1,4 +1,4 @@
-# Halving the Activated Experts of a MoE Without Training: The Integer Hiding Inside Renormalization
+# Halving the Activated Experts of a MoE Without Training
 
 > Fine-grained Mixture-of-Experts models (hundreds of small experts, 8 picked per token) lose accuracy when you lower top-k at inference, and the usual remedy is retraining or distillation.
 > We find that much of that loss is **not caused by having fewer experts, but by renormalization turning the "volume" of the expert branch to the wrong level**.
@@ -222,7 +222,7 @@ Three observations:
 
 ### 6.2 MMLU: halving activated experts is indistinguishable from native
 
-![MMLU change](figs/fig4_mmlu_delta_qwen.png)
+![MMLU change](figs/fig4_mmlu_delta_qwen.png =60%)
 
 *Figure 5: MMLU change versus k₂/k for three Qwen models at two values of k₁ each. The leftmost point of each curve is standard renormalization (k₂=k₁). Hollow markers are significantly worse under a paired McNemar test (p<0.05); filled markers are indistinguishable. The k₂=E endpoint is off-scale and omitted.*
 
@@ -263,7 +263,7 @@ Key points:
 
 ### 6.3 Perplexity picks a significantly worse operating point
 
-![PPL vs MMLU disagree](figs/fig3_ppl_vs_mmlu.png)
+![PPL vs MMLU disagree](figs/fig3_ppl_vs_mmlu.png =60%)
 
 *Figure 6: Qwen3.6-35B, k₁=6. WikiText perplexity (blue, left axis) and MMLU (orange, right axis) versus k₂. Stars mark each metric's optimum.*
 
@@ -366,7 +366,7 @@ Scanning s from 1.2 to 2.0 at n=1000 (top-2, baseline 70.60%): the default s=1.8
 
 256 experts / top-6, `sqrt(softplus(x))` scoring, `e_score_correction_bias` used for selection only, weights normalized within the top-k and multiplied by a fixed 1.5. This is the GLM family of gating.
 
-![DeepSeek](figs/fig9_deepseek.png)
+![DeepSeek](figs/fig9_deepseek.png =60%)
 
 *Figure 9: DeepSeek-V4-Flash, k₁=4. WikiText perplexity change (blue) and MMLU change (orange, n=1000) versus k₂. Both degrade monotonically as k₂ grows.*
 
