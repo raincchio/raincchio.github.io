@@ -446,6 +446,7 @@ function renderSite() {
     {k:'highlight', label:'论文作者中要加粗的名字'},
     {k:'blog_intro', label:'博客页简介'},
     {k:'source_url', label:'页脚 Source 链接'},
+    {k:'goatcounter', label:'GoatCounter 统计代码（goatcounter.com 注册的 code，留空则不统计）', short:true},
   ];
   for (const f of scalars) row.append(field(s, f));
   list.append(row);

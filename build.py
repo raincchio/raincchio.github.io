@@ -324,6 +324,10 @@ def page(site, title, active, body, head=""):
         for label, url in NAV
     )
     full_title = esc(title) if title else esc(site["name"])
+    analytics = ""
+    if site.get("goatcounter"):  # count.js skips localhost, so previews stay clean
+        analytics = (f'\n  <script data-goatcounter="https://{esc(site["goatcounter"])}.goatcounter.com/count"'
+                     ' async src="https://gc.zgo.at/count.js"></script>')
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -351,7 +355,7 @@ def page(site, title, active, body, head=""):
 
   <footer class="site-footer">
     <p>© 2026 {esc(site["name"])} · <a href="{esc(site["source_url"])}">Source</a></p>
-  </footer>
+  </footer>{analytics}
 </body>
 </html>
 """
