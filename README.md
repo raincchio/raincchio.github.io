@@ -12,8 +12,8 @@ committed, so Pages needs no build step.
 python3 admin.py          # then open http://localhost:8000/admin
 ```
 
-Tabs for each module (动态 / 论文 / 工作经历 / 学习经历 / 博客 / 站点信息);
-add, edit, reorder, delete entries and hit 保存并重建 — the JSON is written
+Tabs for each module (Updates / Publications / Experience / Education / Blog / Site settings);
+add, edit, reorder, delete entries and hit Save and rebuild — the JSON is written
 and all pages regenerate. Preview at http://localhost:8000/. When done,
 commit and push (`git add -A && git commit && git push`).
 
@@ -21,7 +21,7 @@ Prefer hand-editing? Change `data/*.json` directly and run `python3 build.py`.
 
 ### Blog posts
 
-Each post is a zip uploaded from the 博客 tab: one Markdown file plus the
+Each post is a zip uploaded from the Blog tab: one Markdown file plus the
 images it references by relative path (e.g. `![](fig1.png)`). Title and date
 come from front matter (`--- title: … / date: … ---`) or the first `#`
 heading, and stay editable in the tab. Uploading with the same slug replaces
@@ -37,7 +37,7 @@ Markdown subset: headings, emphasis, links, images, code
 - `data/` — all content, one JSON per module (single source of truth)
 - `build.py` — regenerates the pages below from `data/` (stdlib only)
 - `admin.py` — local editing UI + preview server (stdlib only, binds 127.0.0.1)
-- `index.html` — home: motto + latest 3 updates (auto-picked by date) + links
+- `index.html` — home: motto + latest 6 updates (auto-picked by date) + links
 - `posts/` — blog sources: `posts/<slug>/index.md` + images (from uploaded zips)
 - `blog/` — generated post list plus one directory per post (page + copied images)
 - `publications/` — full publication list, grouped by year

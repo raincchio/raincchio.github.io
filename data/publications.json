@@ -1,5 +1,11 @@
 [
   {
+    "year": "2026.09",
+    "title": "Learn from the Gap: Differential-Aware Advantage Pruning with Adaptive Rollout Sampling for GRPO",
+    "authors": "J. Yang, Z. Yang, X. Zhang, D. Chen, X. Chen, T. Su, H. Lu, Q. Guan, K. Tang, C. Wang",
+    "venue": "NeurIPS, 2026 (accepted)"
+  },
+  {
     "year": "2026.08",
     "title": "SRJudge: Empowering Large Language Models with Selective Reasoning for Fine-Grained Knowledge",
     "authors": "Z. Yang, J. Yang, H. Lin, X. Chen, Q. Guan",
@@ -33,7 +39,7 @@
     "year": "2026.01",
     "title": "Signal-Adaptive Trust Regions for Gradient-Free Optimization of Recurrent Spiking Neural Networks",
     "authors": "J. Li, Y. Sun, Z. Ma, H. He, X. Zhang, X. Chen, J. Li, S. Song",
-    "venue": "arXiv:2601.21572, 2026"
+    "venue": "NeurIPS, 2026 (accepted)"
   },
   {
     "year": "2025.11",

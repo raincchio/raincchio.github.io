@@ -291,11 +291,18 @@ def collect_updates(updates, pubs, posts, experience):
             "text": f'<a href="/blog/{esc(p["slug"])}/">{esc(p["title"])}</a>.',
         })
     for e in experience:
+        continuing = any(
+            prev["org"] == e["org"] and date_key(prev.get("date", "")) < date_key(e.get("date", ""))
+            for prev in experience
+        )
+        org_link = f'<a href="/experience/">{esc(e["org"])}</a>'
+        text = (f'Became {esc(e["title"])} at {org_link}.' if continuing
+                else f'Joined {org_link} as {esc(e["title"])}.')
         items.append({
             "key": date_key(e.get("date", "")),
             "date": fmt_date(e.get("date", "")),
             "kind": "career",
-            "text": f'Joined <a href="/experience/">{esc(e["org"])}</a> as {esc(e["title"])}.',
+            "text": text,
         })
     items.sort(key=lambda i: i["key"], reverse=True)
     return items[:HOME_UPDATE_COUNT]

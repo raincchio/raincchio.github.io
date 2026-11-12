@@ -134,7 +134,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                  and not Path(n).name.startswith(".")]
         mds = [n for n in names if n.lower().endswith(".md")]
         if not mds:
-            return self._send(400, json.dumps({"error": "压缩包里没有 .md 文件"}).encode("utf-8"),
+            return self._send(400, json.dumps({"error": "No Markdown (.md) file found in the archive"}).encode("utf-8"),
                               "application/json")
         # prefer a root-level md named index/readme/post; extract the rest relative to its dir
         md_name = min(mds, key=lambda n: (
@@ -232,18 +232,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if r.returncode != 0:
                 return self._send(500, json.dumps(
                     {"error": (r.stderr or r.stdout).strip()}).encode("utf-8"), "application/json")
-            parts.append("新提交 " + git("rev-parse", "--short", "HEAD").stdout.strip())
+            parts.append("Created commit " + git("rev-parse", "--short", "HEAD").stdout.strip())
         ahead = git("rev-list", "--count", "@{u}..HEAD").stdout.strip() or "0"
         if ahead == "0":
             return self._send(200, json.dumps(
-                {"ok": True, "detail": "没有需要发布的改动，本地与 GitHub 一致"},
+                {"ok": True, "detail": "Nothing to publish; local content is up to date with GitHub"},
                 ensure_ascii=False).encode("utf-8"), "application/json")
         r = git("push", "origin", "main")
         if r.returncode != 0:
             return self._send(500, json.dumps(
                 {"error": (r.stderr or r.stdout).strip()}).encode("utf-8"), "application/json")
-        parts.append(f"已推送 {ahead} 个提交到 GitHub，Pages 一两分钟后生效")
-        self._send(200, json.dumps({"ok": True, "detail": "，".join(parts)},
+        parts.append(f"Pushed {ahead} commit(s) to GitHub; Pages should update in a minute or two")
+        self._send(200, json.dumps({"ok": True, "detail": "; ".join(parts)},
                                    ensure_ascii=False).encode("utf-8"), "application/json")
 
     def log_message(self, fmt, *args):
@@ -251,11 +251,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 ADMIN_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>主页后台</title>
+<title>Homepage Admin</title>
 <style>
   :root { --accent:#2563eb; --border:#dfe3e8; --muted:#6b7280; --bg:#f6f7f9; }
   * { box-sizing:border-box; }
@@ -292,51 +292,51 @@ ADMIN_HTML = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>主页后台</h1>
+  <h1>Homepage Admin</h1>
   <button id="pubBtn" style="border:none;border-radius:8px;background:#15803d;color:#fff;
-    padding:0.4rem 1rem;cursor:pointer;font-size:0.9rem">发布到 GitHub</button>
-  <a href="/" target="_blank">预览站点 ↗</a>
+    padding:0.4rem 1rem;cursor:pointer;font-size:0.9rem">Publish to GitHub</button>
+  <a href="/" target="_blank">Preview site ↗</a>
 </header>
 <div class="tabs" id="tabs"></div>
 <main>
   <p class="hint" id="hint"></p>
   <div id="list"></div>
   <div class="bar">
-    <button class="add" id="addBtn">＋ 添加一条</button>
-    <button class="save" id="saveBtn">保存并重建</button>
+    <button class="add" id="addBtn">+ Add entry</button>
+    <button class="save" id="saveBtn">Save and rebuild</button>
     <span id="msg"></span>
   </div>
 </main>
 <script>
 const SCHEMAS = {
-  updates: { title:'动态', hint:'主页动态会自动从论文、博客、工作经历按时间聚合出最新 3 条，这里只用于添加额外的手动动态（如获奖、报告）。日期写 2026 或 2026.03 均可。',
+  updates: { title:'Updates', hint:'The homepage shows the latest 6 updates from publications, posts, and work experience, ordered by date. Add other news here, such as awards or talks. Dates accept 2026 or 2026.03.',
     fields:[
-      {k:'date', label:'日期', short:true},
-      {k:'text', label:'内容（纯文本或 HTML，可写 <a href="/publications/">链接</a>）', type:'textarea', rows:2}],
+      {k:'date', label:'Date', short:true},
+      {k:'text', label:'Content (plain text or HTML, including <a href="/publications/">links</a>)', type:'textarea', rows:2}],
     blank:{date:'', text:''} },
-  publications: { title:'论文', hint:'按年份自动分组、倒序排列；作者里出现「X. Chen」会自动加粗。新论文也会自动进入主页最新动态。',
+  publications: { title:'Publications', hint:'Publications are grouped by year in reverse chronological order. X. Chen is highlighted in author lists. New publications also appear in homepage updates.',
     fields:[
-      {k:'year', label:'年份（如 2026.03）', short:true},
-      {k:'title', label:'标题'},
-      {k:'authors', label:'作者（缩写、逗号分隔）'},
-      {k:'venue', label:'发表于（会议/期刊 + 年份，或 arXiv 编号）'}],
+      {k:'year', label:'Date (e.g. 2026.03)', short:true},
+      {k:'title', label:'Title'},
+      {k:'authors', label:'Authors (initials, comma-separated)'},
+      {k:'venue', label:'Venue (conference/journal and year, or arXiv ID)'}],
     blank:{year:'', title:'', authors:'', venue:''} },
-  experience: { title:'工作经历', hint:'按列表顺序展示，请把最新的放最上面。描述可含 HTML 链接。',
+  experience: { title:'Experience', hint:'Entries appear in list order; put the most recent first. Descriptions accept HTML links.',
     fields:[
-      {k:'date', label:'时间段（如 2024.8 – Present）', short:true},
-      {k:'title', label:'职位'},
-      {k:'org', label:'公司 / 机构'},
-      {k:'desc', label:'一句话描述（可含 <a href="…">链接</a>）', type:'textarea', rows:2}],
+      {k:'date', label:'Date range (e.g. 2024.8 – Present)', short:true},
+      {k:'title', label:'Role'},
+      {k:'org', label:'Company / organization'},
+      {k:'desc', label:'Brief description (accepts <a href="…">links</a>)', type:'textarea', rows:2}],
     blank:{date:'', title:'', org:'', desc:''} },
-  education: { title:'学习经历', hint:'按列表顺序展示，请把最新的放最上面。描述可含 HTML 链接（如导师主页）。',
+  education: { title:'Education', hint:'Entries appear in list order; put the most recent first. Descriptions accept HTML links, such as an advisor homepage.',
     fields:[
-      {k:'date', label:'时间段', short:true},
-      {k:'title', label:'学位 / 专业'},
-      {k:'org', label:'学校'},
-      {k:'desc', label:'一句话描述（可含 <a href="…">链接</a>）', type:'textarea', rows:2}],
+      {k:'date', label:'Date range', short:true},
+      {k:'title', label:'Degree / field'},
+      {k:'org', label:'Institution'},
+      {k:'desc', label:'Brief description (accepts <a href="…">links</a>)', type:'textarea', rows:2}],
     blank:{date:'', title:'', org:'', desc:''} },
-  posts: { title:'博客', hint:'每篇博客独立管理：上传 zip（Markdown + 图片）或直接「编辑 Markdown」在线改正文。标题/日期从 front matter（--- title: … / date: … ---）或第一个 # 标题解析，也可在下方修改后点「保存并重建」。', blog:true },
-  site: { title:'站点信息', hint:'姓名、签名、格言与联系方式链接。', site:true },
+  posts: { title:'Blog', hint:'Manage each post separately: upload a zip (Markdown and images) or use Edit Markdown. Titles and dates are parsed from front matter (--- title: … / date: … ---) or the first # heading, and can be edited below before saving.', blog:true },
+  site: { title:'Site settings', hint:'Name, tagline, biography, and contact links.', site:true },
 };
 const ORDER = ['updates','publications','experience','education','posts','site'];
 let data = null, cur = 'updates';
@@ -389,7 +389,7 @@ function renderList() {
     ops.append(
       el('button', {onclick: () => move(-1)}, '↑'),
       el('button', {onclick: () => move(1)}, '↓'),
-      el('button', {class:'del', onclick: () => { arr.splice(i,1); renderList(); }}, '删除'));
+      el('button', {class:'del', onclick: () => { arr.splice(i,1); renderList(); }}, 'Delete'));
     row.append(ops);
     list.append(row);
   });
@@ -401,21 +401,21 @@ function renderSite() {
   list.replaceChildren();
 
   const avatarRow = el('div', {class:'row'});
-  avatarRow.append(el('label', {}, '头像（主页显示为圆形，建议正方形图，jpg/png/webp，≤5MB）'));
+  avatarRow.append(el('label', {}, 'Avatar (shown as a circle; square image recommended; jpg/png/webp, up to 5 MB)'));
   const line = el('div', {style:'display:flex;gap:1rem;align-items:center'});
   if (s.avatar) {
     const img = el('img', {src: s.avatar + '?t=' + Date.now(),
       style:'width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--border)'});
     line.append(img);
   } else {
-    line.append(el('span', {style:'color:var(--muted);font-size:0.9rem'}, '尚未上传'));
+    line.append(el('span', {style:'color:var(--muted);font-size:0.9rem'}, 'No image uploaded'));
   }
   const file = el('input', {type:'file', accept:'image/*', style:'border:none;padding:0'});
   file.onchange = async () => {
     const f = file.files[0];
     if (!f) return;
     const msg = $('msg');
-    msg.className = ''; msg.textContent = '上传中…';
+    msg.className = ''; msg.textContent = 'Uploading…';
     const b64 = await new Promise((ok, err) => {
       const r = new FileReader();
       r.onload = () => ok(r.result.split(',')[1]);
@@ -428,10 +428,10 @@ function renderSite() {
       const out = await res.json();
       if (!res.ok) throw new Error(out.error || res.status);
       s.avatar = out.avatar;
-      msg.className = 'ok'; msg.textContent = '✓ 头像已更新并重建';
+      msg.className = 'ok'; msg.textContent = '✓ Avatar updated and site rebuilt';
       renderSite();
     } catch (e) {
-      msg.className = 'err'; msg.textContent = '上传失败：' + e.message;
+      msg.className = 'err'; msg.textContent = 'Upload failed: ' + e.message;
     }
   };
   line.append(file);
@@ -440,30 +440,30 @@ function renderSite() {
 
   const row = el('div', {class:'row'});
   const scalars = [
-    {k:'name', label:'姓名'},
-    {k:'tagline', label:'一句话签名（首页标题下方）'},
-    {k:'bio', label:'个人简介（首页 About，可含 HTML 链接）', type:'textarea', rows:4},
-    {k:'highlight', label:'论文作者中要加粗的名字'},
-    {k:'blog_intro', label:'博客页简介'},
-    {k:'source_url', label:'页脚 Source 链接'},
-    {k:'goatcounter', label:'GoatCounter 统计代码（goatcounter.com 注册的 code，留空则不统计）', short:true},
+    {k:'name', label:'Name'},
+    {k:'tagline', label:'Tagline (below the homepage title)'},
+    {k:'bio', label:'Biography (homepage; accepts HTML links)', type:'textarea', rows:4},
+    {k:'highlight', label:'Author name to highlight in publications'},
+    {k:'blog_intro', label:'Blog introduction'},
+    {k:'source_url', label:'Footer source link'},
+    {k:'goatcounter', label:'GoatCounter site code (registered at goatcounter.com; leave blank to disable analytics)', short:true},
   ];
   for (const f of scalars) row.append(field(s, f));
   list.append(row);
 
   const linksRow = el('div', {class:'row'});
-  linksRow.append(el('label', {}, '联系方式 / 外部链接'));
+  linksRow.append(el('label', {}, 'Contact / external links'));
   s.links.forEach((l, i) => {
     const line = el('div', {style:'display:flex;gap:0.5rem;margin-bottom:0.4rem;align-items:center'});
     const lab = el('input', {class:'short', oninput: e => l.label = e.target.value}); lab.value = l.label || '';
     const url = el('input', {oninput: e => l.url = e.target.value}); url.value = l.url || '';
     const del = el('button', {class:'del', onclick: () => { s.links.splice(i,1); renderSite(); },
-                              style:'border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer'}, '删');
+                              style:'border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer'}, 'Remove');
     line.append(lab, url, del);
     linksRow.append(line);
   });
   linksRow.append(el('button', {class:'add', style:'border:1px solid var(--border);background:#fff;border-radius:6px;padding:0.2rem 0.7rem;cursor:pointer',
-    onclick: () => { s.links.push({label:'', url:''}); renderSite(); }}, '＋ 加一条链接'));
+    onclick: () => { s.links.push({label:'', url:''}); renderSite(); }}, '+ Add link'));
   list.append(linksRow);
   $('addBtn').hidden = true;
 }
@@ -489,17 +489,17 @@ async function uploadZip(fileInput, slug) {
   const f = fileInput.files[0];
   if (!f) return;
   const msg = $('msg');
-  msg.className = ''; msg.textContent = '上传解析中…';
+  msg.className = ''; msg.textContent = 'Uploading and parsing…';
   try {
     const out = await postJSON('/api/blog/upload',
       {filename: f.name, slug: slug || '', data: await readB64(f)});
     data = await (await fetch('/api/data')).json();
     render();
     msg.className = 'ok';
-    msg.textContent = (out.replaced ? '✓ 已替换并重建：' : '✓ 已发布并重建：') +
-      out.slug + '（' + out.title + '）';
+    msg.textContent = (out.replaced ? '✓ Replaced and rebuilt: ' : '✓ Created and rebuilt: ') +
+      out.slug + ' (' + out.title + ')';
   } catch (e) {
-    msg.className = 'err'; msg.textContent = '上传失败：' + e.message;
+    msg.className = 'err'; msg.textContent = 'Upload failed: ' + e.message;
   }
 }
 
@@ -513,8 +513,8 @@ function mdEditor(slug) {
   ta.value = mdDraft;
   const bar = el('div', {class:'ops', style:'justify-content:flex-start'});
   bar.append(
-    el('button', {onclick: () => saveMd(slug)}, '保存 Markdown 并重建'),
-    el('button', {onclick: () => { mdOpen = null; mdNew = false; render(); }}, '收起'));
+    el('button', {onclick: () => saveMd(slug)}, 'Save Markdown and rebuild'),
+    el('button', {onclick: () => { mdOpen = null; mdNew = false; render(); }}, 'Close'));
   wrap.append(ta, bar);
   return wrap;
 }
@@ -529,21 +529,21 @@ async function openMd(slug) {
     mdNew = false; mdOpen = slug; mdDraft = out.content;
     render();
   } catch (e) {
-    msg.className = 'err'; msg.textContent = '读取失败：' + e.message;
+    msg.className = 'err'; msg.textContent = 'Could not load: ' + e.message;
   }
 }
 
 async function saveMd(slug) {
   const msg = $('msg');
-  msg.className = ''; msg.textContent = '保存中…';
+  msg.className = ''; msg.textContent = 'Saving…';
   try {
     await postJSON('/api/blog/md', {slug, content: mdDraft});
     data = await (await fetch('/api/data')).json();
     mdNew = false;
     render();
-    $('msg').className = 'ok'; $('msg').textContent = '✓ 已保存并重建：' + slug + '，刷新预览即可看到';
+    $('msg').className = 'ok'; $('msg').textContent = '✓ Saved and rebuilt: ' + slug + '; refresh the preview to see the changes';
   } catch (e) {
-    msg.className = 'err'; msg.textContent = '保存失败：' + e.message;
+    msg.className = 'err'; msg.textContent = 'Save failed: ' + e.message;
   }
 }
 
@@ -552,27 +552,27 @@ function renderBlog() {
   list.replaceChildren();
 
   const up = el('div', {class:'row'});
-  up.append(el('label', {}, '上传新博客（zip）'));
+  up.append(el('label', {}, 'Upload a new post (zip)'));
   const line = el('div', {style:'display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap'});
-  const slugIn = el('input', {class:'short', placeholder:'slug（可留空，取 zip 文件名）'});
+  const slugIn = el('input', {class:'short', placeholder:'Slug (optional; defaults to zip filename)'});
   const file = el('input', {type:'file', accept:'.zip,application/zip', style:'border:none;padding:0'});
   file.onchange = () => uploadZip(file, slugIn.value);
   const newBtn = el('button', {style:'border:1px solid var(--border);background:#fff;border-radius:6px;padding:0.3rem 0.8rem;cursor:pointer',
     onclick: () => {
       const slug = slugIn.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-      if (!slug) { $('msg').className='err'; $('msg').textContent='新建前先在左边填一个 slug'; return; }
+      if (!slug) { $('msg').className='err'; $('msg').textContent='Enter a slug on the left before creating a post'; return; }
       mdNew = true; mdOpen = slug;
-      mdDraft = '---\\ntitle: 文章标题\\ndate: ' + new Date().toISOString().slice(0,10) + '\\n---\\n\\n正文……\\n';
+      mdDraft = '---\\ntitle: Post title\\ndate: ' + new Date().toISOString().slice(0,10) + '\\n---\\n\\nPost content…\\n';
       render();
-    }}, '＋ 新建（纯 Markdown）');
+    }}, '+ New Markdown post');
   line.append(slugIn, file, newBtn);
   up.append(line);
   up.append(el('div', {class:'hint', style:'margin:0.5rem 0 0'},
-    'zip 里放一个 .md（可带 front matter）和它引用的图片，图片用相对路径（如 ![](fig1.png)）。' +
-    '公式写 $行内$ 或 $$独立公式$$（KaTeX 渲染）。图片可加宽度：![](fig1.png =60%) 或 =420（像素），缩小后自动居中。' +
-    'slug 相同即覆盖旧文。不带图的文章可直接「新建」在线写。'));
+    'Include one .md file (with optional front matter) and its images in the zip. Use relative image paths, e.g. ![](fig1.png). ' +
+    'Write math as $inline$ or $$display$$ (rendered with KaTeX). Set image widths with ![](fig1.png =60%) or =420 (pixels); smaller images are centered. ' +
+    'An existing slug replaces the old post. Use New Markdown post to write posts without images in the editor.'));
   if (mdNew && mdOpen) {
-    up.append(el('div', {style:'margin-top:0.6rem;font-weight:600'}, '新博客：' + mdOpen));
+    up.append(el('div', {style:'margin-top:0.6rem;font-weight:600'}, 'New post: ' + mdOpen));
     up.append(mdEditor(mdOpen));
   }
   list.append(up);
@@ -581,36 +581,36 @@ function renderBlog() {
     const row = el('div', {class:'row'});
     const head = el('div', {style:'display:flex;gap:0.7rem;align-items:baseline'});
     head.append(el('strong', {}, p.slug),
-      el('a', {href:'/blog/' + p.slug + '/', target:'_blank', style:'font-size:0.85rem'}, '预览 ↗'));
+      el('a', {href:'/blog/' + p.slug + '/', target:'_blank', style:'font-size:0.85rem'}, 'Preview ↗'));
     row.append(head);
-    row.append(field(p, {k:'title', label:'标题'}));
-    row.append(field(p, {k:'date', label:'日期（如 2026-09-04）', short:true}));
+    row.append(field(p, {k:'title', label:'Title'}));
+    row.append(field(p, {k:'date', label:'Date (e.g. 2026-09-04)', short:true}));
     const ops = el('div', {class:'ops'});
     const rep = el('input', {type:'file', accept:'.zip,application/zip', style:'display:none'});
     rep.onchange = () => uploadZip(rep, p.slug);
     const editBtn = el('button', {onclick: () => openMd(p.slug)},
-      mdOpen === p.slug && !mdNew ? '收起编辑' : '编辑 Markdown');
-    const repBtn = el('button', {onclick: () => rep.click()}, '替换 zip');
+      mdOpen === p.slug && !mdNew ? 'Close editor' : 'Edit Markdown');
+    const repBtn = el('button', {onclick: () => rep.click()}, 'Replace zip');
     const delBtn = el('button', {class:'del', onclick: async () => {
-      if (!confirm('删除博客「' + p.slug + '」？源文件和页面都会被移除。')) return;
+      if (!confirm('Delete post "' + p.slug + '"? This removes both source files and generated pages.')) return;
       const msg = $('msg');
       try {
         await postJSON('/api/blog/delete', {slug: p.slug});
         if (mdOpen === p.slug) { mdOpen = null; mdNew = false; }
         data = await (await fetch('/api/data')).json();
         render();
-        $('msg').className = 'ok'; $('msg').textContent = '✓ 已删除并重建';
+        $('msg').className = 'ok'; $('msg').textContent = '✓ Deleted and rebuilt';
       } catch (e) {
-        msg.className = 'err'; msg.textContent = '删除失败：' + e.message;
+        msg.className = 'err'; msg.textContent = 'Delete failed: ' + e.message;
       }
-    }}, '删除');
+    }}, 'Delete');
     ops.append(rep, editBtn, repBtn, delBtn);
     row.append(ops);
     if (mdOpen === p.slug && !mdNew) row.append(mdEditor(p.slug));
     list.append(row);
   });
   if (!data.posts.length)
-    list.append(el('div', {class:'row', style:'color:var(--muted)'}, '还没有博客，上传一个 zip 开始吧。'));
+    list.append(el('div', {class:'row', style:'color:var(--muted)'}, 'No posts yet. Upload a zip to get started.'));
   $('addBtn').hidden = true;
 }
 
@@ -625,15 +625,15 @@ function render() {
 
 async function save() {
   const msg = $('msg');
-  msg.className = ''; msg.textContent = '保存中…';
+  msg.className = ''; msg.textContent = 'Saving…';
   try {
     const res = await fetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({name: cur, data: data[cur]})});
     const out = await res.json();
     if (!res.ok) throw new Error(out.error || res.status);
-    msg.className = 'ok'; msg.textContent = '✓ 已保存并重建，刷新预览即可看到';
+    msg.className = 'ok'; msg.textContent = '✓ Saved and rebuilt; refresh the preview to see the changes';
   } catch (e) {
-    msg.className = 'err'; msg.textContent = '保存失败：' + e.message;
+    msg.className = 'err'; msg.textContent = 'Save failed: ' + e.message;
   }
 }
 
@@ -648,18 +648,18 @@ async function init() {
   $('addBtn').onclick = () => { data[cur].unshift({...SCHEMAS[cur].blank}); renderList(); };
   $('saveBtn').onclick = save;
   $('pubBtn').onclick = async () => {
-    const m = prompt('发布到 GitHub（线上站点会更新）。提交说明，留空用默认：', '');
+    const m = prompt('Publish to GitHub (updates the live site). Commit message (leave blank for default): ', '');
     if (m === null) return;
     const msg = $('msg'), btn = $('pubBtn');
-    btn.disabled = true; btn.textContent = '发布中…';
-    msg.className = ''; msg.textContent = '正在提交并推送……';
+    btn.disabled = true; btn.textContent = 'Publishing…';
+    msg.className = ''; msg.textContent = 'Committing and pushing…';
     try {
       const out = await postJSON('/api/publish', {message: m});
       msg.className = 'ok'; msg.textContent = '✓ ' + out.detail;
     } catch (e) {
-      msg.className = 'err'; msg.textContent = '发布失败：' + e.message;
+      msg.className = 'err'; msg.textContent = 'Publish failed: ' + e.message;
     } finally {
-      btn.disabled = false; btn.textContent = '发布到 GitHub';
+      btn.disabled = false; btn.textContent = 'Publish to GitHub';
     }
   };
   render();
