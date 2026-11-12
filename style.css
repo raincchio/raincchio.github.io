@@ -232,6 +232,9 @@ h2 {
   font-weight: 600;
 }
 
+.pub-title a { color: var(--text); }
+.pub-title a:hover { color: var(--accent); }
+
 .pub-authors {
   font-size: 0.95rem;
   color: var(--text-muted);
