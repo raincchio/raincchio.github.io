@@ -19,6 +19,9 @@ commit and push (`git add -A && git commit && git push`).
 
 Prefer hand-editing? Change `data/*.json` directly and run `python3 build.py`.
 
+Manual updates can list exact paper titles in `covered_publications` to suppress
+duplicate automatic paper updates while keeping the full publication list.
+
 ### Blog posts
 
 Each post is a zip uploaded from the Blog tab: one Markdown file plus the

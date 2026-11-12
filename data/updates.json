@@ -1,10 +1,14 @@
 [
   {
     "date": "2026.11",
-    "text": "Worked on Jasper-K at Ragentile Intelligence. Read the <a href=\"https://ragentile.github.io/Jasper-K/\">technical blog</a>."
+    "text": "Led the Jasper-K project at Ragentile Intelligence. Read the <a href=\"https://ragentile.github.io/Jasper-K/\">technical blog</a>."
   },
   {
     "date": "2026.09",
-    "text": "Two papers accepted to NeurIPS 2026: <a href=\"https://arxiv.org/abs/2601.21572\">Signal-Adaptive Trust Regions (SATR)</a> and <a href=\"https://arxiv.org/abs/2609.36932\">Learn from the Gap (FastRL)</a>."
+    "text": "Two papers accepted to NeurIPS 2026: <a href=\"https://arxiv.org/abs/2601.21572\">Signal-Adaptive Trust Regions (SATR)</a> and <a href=\"https://arxiv.org/abs/2609.36932\">Learn from the Gap (FastRL)</a>.",
+    "covered_publications": [
+      "Signal-Adaptive Trust Regions for Gradient-Free Optimization of Recurrent Spiking Neural Networks",
+      "Learn from the Gap: Differential-Aware Advantage Pruning with Adaptive Rollout Sampling for GRPO"
+    ]
   }
 ]

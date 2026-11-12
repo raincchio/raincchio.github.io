@@ -272,10 +272,15 @@ def load_posts():
 
 def collect_updates(updates, pubs, posts, experience):
     """Merge manual updates with entries auto-derived from the other modules."""
+    covered_publications = {
+        title for u in updates for title in u.get("covered_publications", [])
+    }
     items = [{"key": date_key(u["date"]), "date": fmt_date(u["date"]) or u["date"],
               "kind": "news", "text": u["text"]}
              for u in updates]
     for p in pubs:
+        if p["title"] in covered_publications:
+            continue
         venue = f" ({esc(p['venue'])})" if p.get("venue") else ""
         items.append({
             "key": date_key(p.get("year", "")),
