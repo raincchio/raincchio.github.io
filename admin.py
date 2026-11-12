@@ -319,8 +319,9 @@ const SCHEMAS = {
       {k:'year', label:'Date (e.g. 2026.03)', short:true},
       {k:'title', label:'Title'},
       {k:'authors', label:'Authors (initials, comma-separated)'},
-      {k:'venue', label:'Venue (conference/journal and year, or arXiv ID)'}],
-    blank:{year:'', title:'', authors:'', venue:''} },
+      {k:'venue', label:'Venue (conference/journal and year, or arXiv ID)'},
+      {k:'url', label:'Paper URL (publisher, DOI, arXiv, or OpenReview)'}],
+    blank:{year:'', title:'', authors:'', venue:'', url:''} },
   experience: { title:'Experience', hint:'Entries appear in list order; put the most recent first. Descriptions accept HTML links.',
     fields:[
       {k:'date', label:'Date range (e.g. 2024.8 – Present)', short:true},

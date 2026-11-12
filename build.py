@@ -286,7 +286,7 @@ def collect_updates(updates, pubs, posts, experience):
             "key": date_key(p.get("year", "")),
             "date": fmt_date(p.get("year", "")),
             "kind": "paper",
-            "text": f'<a href="/publications/">“{esc(p["title"])}”</a>{venue}.',
+            "text": f'<a href="{esc(p.get("url") or "/publications/")}">“{esc(p["title"])}”</a>{venue}.',
         })
     for p in posts:
         items.append({
@@ -408,6 +408,10 @@ def render_home(site, latest):
 
 
 def render_publications(site, pubs):
+    def title_html(p):
+        title = esc(p["title"])
+        return f'<a href="{esc(p["url"])}">{title}</a>' if p.get("url") else title
+
     def authors_html(a):
         return esc(a).replace(esc(site["highlight"]), f"<strong>{esc(site['highlight'])}</strong>")
 
@@ -421,7 +425,7 @@ def render_publications(site, pubs):
         )
         entries = "\n".join(
             f"""        <li>
-          <p class="pub-title">{esc(p["title"])}</p>
+          <p class="pub-title">{title_html(p)}</p>
           <p class="pub-authors">{authors_html(p["authors"])}</p>
           <p class="pub-venue">{esc(p["venue"])}</p>
         </li>"""
